@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.drivesense"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973" //Changed from ndkVersion = flutter.ndkVersion to avoid error
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

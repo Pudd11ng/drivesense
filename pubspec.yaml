@@ -37,6 +37,8 @@ dependencies:
   go_router: ^14.8.1
   provider: ^6.1.2
   flutter_svg: ^2.0.17
+  flutter_native_splash: ^2.4.5
+  flutter_launcher_icons: ^0.14.3
 
 dev_dependencies:
   flutter_test:
@@ -94,3 +96,28 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+  image: "assets/drivesense_logo.png"
+  color: "#ffffff"
+  branding: assets/drivesense_bottom.png 
+  branding_mode: bottom
+  
+  # Platform-specific settings
+  android: true
+  ios: false
+  web: false
+
+  # Following are specific parameters for Android 12+.
+  android_12:
+    image: "assets/drivesense_logo.png"
+    color: "#ffffff"
+    branding: assets/drivesense_bottom.png 
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/drivesense_logo.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/drivesense_logo.png"

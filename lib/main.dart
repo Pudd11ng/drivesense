@@ -6,9 +6,7 @@ import 'package:drivesense/ui/user_management/view_model/user_management_view_mo
 void main() {
   runApp(
     MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => AuthViewModel()),
-      ],
+      providers: [ChangeNotifierProvider(create: (context) => AuthViewModel())],
       child: const MyApp(),
     ),
   );
