@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 import 'package:drivesense/domain/models/user/user.dart';
-import 'package:go_router/go_router.dart';
+import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -45,26 +45,7 @@ class _ProfileViewState extends State<ProfileView> {
               ],
             ),
           ),
-          bottomNavigationBar: BottomAppBar(
-            color: const Color(0xFF8C9EF0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.home, color: Colors.white),
-                  onPressed: () {
-                    context.go('/');
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person, color: Colors.white),
-                  onPressed: () {
-                    // Already on profile page
-                  },
-                ),
-              ],
-            ),
-          ),
+          bottomNavigationBar: const AppBottomNavBar(currentRoute: '/profile'),
         );
       },
     );

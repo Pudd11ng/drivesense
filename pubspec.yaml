@@ -69,6 +69,7 @@ flutter:
   assets:
     - assets/google_icon_logo.svg
     - assets/drivesense_logo.png
+    - assets/drivesense_logo_white.png
     - assets/data/
 
   # To add assets to your application, add an assets section, like this:

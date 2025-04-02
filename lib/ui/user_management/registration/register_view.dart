@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
+import 'package:drivesense/ui/core/themes/colors.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -30,28 +31,47 @@ class _RegisterViewState extends State<RegisterView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Create Account',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    Center(
+                      child: Image.asset(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/drivesense_logo_white.png'
+                            : 'assets/drivesense_logo.png',
+                        height: 90,
+                        width: 90,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    Text(
+                      'Create Account',
+                      style: Theme.of(context).textTheme.headlineLarge,
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // Email TextField
                     TextFormField(
                       controller: _emailController,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.black),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                          color: AppColors.black,
+                        ),
                         hintText: 'Email',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: AppColors.lightGrey,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
+                        ),
+                        errorStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
                         ),
                       ),
                       validator: (value) {
@@ -68,14 +88,26 @@ class _RegisterViewState extends State<RegisterView> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.black),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppColors.black,
+                        ),
                         hintText: 'Password',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: AppColors.lightGrey,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
+                        ),
+                        errorStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
                         ),
                       ),
                       validator: (value) {
@@ -94,14 +126,27 @@ class _RegisterViewState extends State<RegisterView> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: true,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.black),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppColors.black,
+                        ),
                         hintText: 'Confirm Password',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: AppColors.lightGrey,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
+
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
+                        ),
+                        errorStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
                         ),
                       ),
                       validator: (value) {
@@ -117,23 +162,28 @@ class _RegisterViewState extends State<RegisterView> {
                     ElevatedButton(
                       onPressed: viewModel.isLoading ? null : _register,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: AppColors.darkBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child:
                           viewModel.isLoading
-                              ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                              : const Text(
-                                'SIGN UP',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: const CircularProgressIndicator(
                                   color: Colors.white,
+                                ),
+                              )
+                              : Text(
+                                'SIGN UP',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                     ),
@@ -144,7 +194,9 @@ class _RegisterViewState extends State<RegisterView> {
                         padding: const EdgeInsets.only(top: 16),
                         child: Text(
                           viewModel.errorMessage!,
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onError,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -154,15 +206,37 @@ class _RegisterViewState extends State<RegisterView> {
                     // Divider or Separator
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppColors.whiteGrey
+                                    : AppColors.lightGrey,
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             'Or',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? AppColors.grey
+                                      : AppColors.lightGrey,
+                            ),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppColors.whiteGrey
+                                    : AppColors.lightGrey,
+                          ),
+                        ),
                       ],
                     ),
 
@@ -178,8 +252,8 @@ class _RegisterViewState extends State<RegisterView> {
                       ),
                       label: const Text('Sign up with Google'),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey[300]!),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(color: AppColors.lightGrey),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -197,10 +271,12 @@ class _RegisterViewState extends State<RegisterView> {
                           onPressed: () {
                             context.go('/login');
                           },
-                          child: const Text(
+                          child: Text(
                             'Sign In',
-                            style: TextStyle(
-                              color: Colors.blue,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.blue,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart';
 import 'package:drivesense/domain/models/device/device.dart';
-import 'package:go_router/go_router.dart';
+import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -86,26 +86,7 @@ class _HomeViewState extends State<HomeView> {
               ],
             ),
           ),
-          bottomNavigationBar: BottomAppBar(
-            color: Color(0xFF8C9EF0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.home, color: Colors.white),
-                  onPressed: () {
-                    // Already on home page
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person, color: Colors.white),
-                  onPressed: () {
-                    context.go('/profile');
-                  },
-                ),
-              ],
-            ),
-          ),
+          bottomNavigationBar: const AppBottomNavBar(currentRoute: '/'),
         );
       },
     );

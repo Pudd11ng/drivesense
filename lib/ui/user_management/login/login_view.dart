@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
-import 'package:drivesense/ui/themes/colors.dart';
+import 'package:drivesense/ui/core/themes/colors.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -27,39 +27,57 @@ class _LoginViewState extends State<LoginView> {
             builder: (context, viewModel, child) {
               return Form(
                 key: _formKey,
-
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Welcome back',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.black,
+                    Center(
+                      child: Image.asset(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/drivesense_logo_white.png'
+                            : 'assets/drivesense_logo.png',
+                        height: 90,
+                        width: 90,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    Text(
+                      'Welcome back',
+                      style: Theme.of(context).textTheme.headlineLarge,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
 
-                    const Text(
+                    Text(
                       'Log in to your account',
-                      style: TextStyle(fontSize: 16, color: AppColors.grey),
+                      style: Theme.of(context).textTheme.labelLarge,
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
 
                     // Email TextField
                     TextFormField(
                       controller: _emailController,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.black),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                          color: AppColors.black,
+                        ),
                         hintText: 'Email',
                         filled: true,
-                        fillColor: AppColors.greyFill,
+                        fillColor: AppColors.lightGrey,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
+                        ),
+                        errorStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
                         ),
                       ),
                       validator: (value) {
@@ -75,14 +93,26 @@ class _LoginViewState extends State<LoginView> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.black),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppColors.black,
+                        ),
                         hintText: 'Password',
                         filled: true,
-                        fillColor: AppColors.greyFill,
+                        fillColor: AppColors.lightGrey,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
+                        ),
+                        errorStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onError,
                         ),
                       ),
                       validator: (value) {
@@ -100,12 +130,9 @@ class _LoginViewState extends State<LoginView> {
                           onPressed: () {
                             //TODO: Navigate to the password recovery screen
                           },
-                          child: const Text(
+                          child: Text(
                             'Forgot password?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.grey,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
                       ],
@@ -117,22 +144,27 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: viewModel.isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.darkBlue,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child:
                           viewModel.isLoading
-                              ? const CircularProgressIndicator(
-                                color: AppColors.white,
-                              )
-                              : const Text(
-                                'LOG IN',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: const CircularProgressIndicator(
                                   color: AppColors.white,
+                                ),
+                              )
+                              : Text(
+                                'LOG IN',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                     ),
@@ -143,7 +175,9 @@ class _LoginViewState extends State<LoginView> {
                         padding: const EdgeInsets.only(top: 16),
                         child: Text(
                           viewModel.errorMessage!,
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onError,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -153,15 +187,37 @@ class _LoginViewState extends State<LoginView> {
                     // Divider or Separator
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppColors.whiteGrey
+                                    : AppColors.lightGrey,
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             'Or',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? AppColors.grey
+                                      : AppColors.lightGrey,
+                            ),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppColors.whiteGrey
+                                    : AppColors.lightGrey,
+                          ),
+                        ),
                       ],
                     ),
 
@@ -177,8 +233,8 @@ class _LoginViewState extends State<LoginView> {
                       ),
                       label: const Text('Sign in with Google'),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey[300]!),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(color: AppColors.lightGrey),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -196,10 +252,12 @@ class _LoginViewState extends State<LoginView> {
                           onPressed: () {
                             context.go('/register');
                           },
-                          child: const Text(
+                          child: Text(
                             'Sign Up',
-                            style: TextStyle(
-                              color: AppColors.darkBlue,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.blue,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

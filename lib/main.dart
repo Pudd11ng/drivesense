@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'routing/router.dart';
+import 'package:drivesense/routing/router.dart';
 import 'package:provider/provider.dart';
+import 'package:drivesense/ui/core/themes/theme.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart';
 
@@ -21,6 +22,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(routerConfig: router);
+    return MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      routerConfig: router,
+    );
   }
 }
