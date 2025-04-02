@@ -3,15 +3,16 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
+import 'package:drivesense/ui/themes/colors.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class LoginView extends StatefulWidget {
+  const LoginView({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<LoginView> createState() => _LoginViewState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -22,10 +23,11 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: Consumer<AuthViewModel>(
+          child: Consumer<UserManagementViewModel>(
             builder: (context, viewModel, child) {
               return Form(
                 key: _formKey,
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -34,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.black,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -42,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const Text(
                       'Log in to your account',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: TextStyle(fontSize: 16, color: AppColors.grey),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 40),
@@ -54,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: const Icon(Icons.email_outlined),
                         hintText: 'Email',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: AppColors.greyFill,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
@@ -77,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         hintText: 'Password',
                         filled: true,
-                        fillColor: Colors.grey[200],
+                        fillColor: AppColors.greyFill,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
@@ -96,13 +98,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         TextButton(
                           onPressed: () {
-                            // Navigate to the password recovery screen
+                            //TODO: Navigate to the password recovery screen
                           },
                           child: const Text(
                             'Forgot password?',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black54,
+                              color: AppColors.grey,
                             ),
                           ),
                         ),
@@ -114,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ElevatedButton(
                       onPressed: viewModel.isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
+                        backgroundColor: AppColors.darkBlue,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -123,14 +125,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       child:
                           viewModel.isLoading
                               ? const CircularProgressIndicator(
-                                color: Colors.white,
+                                color: AppColors.white,
                               )
                               : const Text(
                                 'LOG IN',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: AppColors.white,
                                 ),
                               ),
                     ),
@@ -197,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             'Sign Up',
                             style: TextStyle(
-                              color: Colors.blue,
+                              color: AppColors.darkBlue,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -216,7 +218,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() {
     if (_formKey.currentState!.validate()) {
-      final viewModel = Provider.of<AuthViewModel>(context, listen: false);
+      final viewModel = Provider.of<UserManagementViewModel>(
+        context,
+        listen: false,
+      );
       viewModel.loginWithEmailPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -224,9 +229,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _googleSignIn() {
-    final viewModel = Provider.of<AuthViewModel>(context, listen: false);
-    viewModel.signInWithGoogle();
+  void _googleSignIn() async {
+    final viewModel = Provider.of<UserManagementViewModel>(
+      context,
+      listen: false,
+    );
+    viewModel.signInWithGoogle().then((success) {
+      if (success && mounted) {
+        context.go('/');
+      }
+    });
   }
 
   @override

@@ -4,14 +4,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class RegisterView extends StatefulWidget {
+  const RegisterView({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<RegisterView> createState() => _RegisterViewState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterViewState extends State<RegisterView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -23,7 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: Consumer<AuthViewModel>(
+          child: Consumer<UserManagementViewModel>(
             builder: (context, viewModel, child) {
               return Form(
                 key: _formKey,
@@ -219,7 +219,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() {
     if (_formKey.currentState!.validate()) {
-      final viewModel = Provider.of<AuthViewModel>(context, listen: false);
+      final viewModel = Provider.of<UserManagementViewModel>(
+        context,
+        listen: false,
+      );
       viewModel.registerWithEmailPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -228,7 +231,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _googleSignUp() {
-    final viewModel = Provider.of<AuthViewModel>(context, listen: false);
+    final viewModel = Provider.of<UserManagementViewModel>(
+      context,
+      listen: false,
+    );
     viewModel.signInWithGoogle();
   }
 

@@ -1,0 +1,12 @@
+[
+    {
+        "deviceId": "md001",
+        "deviceSSID": "DriveSense_md001",
+        "deviceName": "DriveSense_md001"
+    },
+    {
+        "deviceId": "md002",
+        "deviceSSID": "DriveSense_md002",
+        "deviceName": "DriveSense_md002"
+    }
+]
