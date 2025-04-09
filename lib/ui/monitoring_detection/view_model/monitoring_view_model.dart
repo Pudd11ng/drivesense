@@ -8,6 +8,12 @@ class MonitoringViewModel extends ChangeNotifier {
   List<Device> _devices = [];
 
   List<Device> get devices => _devices;
+   
+  //check this ltr
+  final List<Device> _connectedDevices = [];
+  List<Device> get connectedDevices => List.unmodifiable(_connectedDevices);
+
+  bool get hasConnectedDevice => _connectedDevices.isNotEmpty;
 
   Future<void> loadDeviceData() async {
     try {
@@ -57,5 +63,25 @@ class MonitoringViewModel extends ChangeNotifier {
       );
       notifyListeners();
     }
+  }
+
+  // Add methods to manage device connections
+  void setConnectedDevice(Device device) {
+    final existingIndex = _connectedDevices.indexWhere(
+      (d) => d.deviceId == device.deviceId,
+    );
+
+    if (existingIndex >= 0) {
+      _connectedDevices[existingIndex] = device;
+    } else {
+      _connectedDevices.add(device);
+    }
+
+    notifyListeners();
+  }
+
+  void removeConnectedDevice(Device device) {
+    _connectedDevices.removeWhere((d) => d.deviceId == device.deviceId);
+    notifyListeners();
   }
 }

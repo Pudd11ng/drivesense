@@ -1,0 +1,18 @@
+{
+    "alertId": "1",
+    "alertTypeName": "Alarm (Default)",
+    "musicPlayList": {
+        "Drowsiness": "Song.mp4",
+        "Distraction": null,
+        "Intoxication": null,
+        "Distress": null,
+        "Phone Usage": null
+    },
+    "audioFilePath": {
+        "Drowsiness": "Song1111.mp4",
+        "Distraction": null,
+        "Intoxication": null,
+        "Distress": null,
+        "Phone Usage": null
+    }
+}

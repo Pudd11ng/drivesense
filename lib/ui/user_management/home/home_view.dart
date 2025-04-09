@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart';
 import 'package:drivesense/domain/models/device/device.dart';
 import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
@@ -34,7 +35,9 @@ class _HomeViewState extends State<HomeView> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.add, color: Colors.black),
-                onPressed: () => _showAddDeviceDialog(context, viewModel),
+                onPressed: () {
+                  context.go('/connect_device');
+                },
               ),
             ],
           ),
@@ -55,6 +58,7 @@ class _HomeViewState extends State<HomeView> {
                         label: 'Driving\nHistory',
                         onTap: () {
                           //TODO: Navigate to the driving history screen
+                          context.go('/driving_history');
                         },
                       ),
                     ),
@@ -64,6 +68,7 @@ class _HomeViewState extends State<HomeView> {
                       label: 'Alert Method',
                       onTap: () {
                         //TODO: Navigate to the alert method screen
+                        context.go('/manage_alert');
                       },
                     ),
                   ],
@@ -176,62 +181,62 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  void _showAddDeviceDialog(
-    BuildContext context,
-    MonitoringViewModel viewModel,
-  ) {
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController ssidController = TextEditingController();
-    final TextEditingController idController = TextEditingController();
+  // void _showAddDeviceDialog(
+  //   BuildContext context,
+  //   MonitoringViewModel viewModel,
+  // ) {
+  //   final TextEditingController nameController = TextEditingController();
+  //   final TextEditingController ssidController = TextEditingController();
+  //   final TextEditingController idController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Add New Device'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: idController,
-                  decoration: const InputDecoration(labelText: 'Device ID'),
-                ),
-                TextField(
-                  controller: ssidController,
-                  decoration: const InputDecoration(labelText: 'Device SSID'),
-                ),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Device Name'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  if (idController.text.isNotEmpty &&
-                      ssidController.text.isNotEmpty &&
-                      nameController.text.isNotEmpty) {
-                    viewModel.addDevice(
-                      Device(
-                        deviceId: idController.text,
-                        deviceName: nameController.text,
-                        deviceSSID: ssidController.text,
-                      ),
-                    );
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          ),
-    );
-  }
+  //   showDialog(
+  //     context: context,
+  //     builder:
+  //         (context) => AlertDialog(
+  //           title: const Text('Add New Device'),
+  //           content: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               TextField(
+  //                 controller: idController,
+  //                 decoration: const InputDecoration(labelText: 'Device ID'),
+  //               ),
+  //               TextField(
+  //                 controller: ssidController,
+  //                 decoration: const InputDecoration(labelText: 'Device SSID'),
+  //               ),
+  //               TextField(
+  //                 controller: nameController,
+  //                 decoration: const InputDecoration(labelText: 'Device Name'),
+  //               ),
+  //             ],
+  //           ),
+  //           actions: [
+  //             TextButton(
+  //               onPressed: () => Navigator.pop(context),
+  //               child: const Text('Cancel'),
+  //             ),
+  //             TextButton(
+  //               onPressed: () {
+  //                 if (idController.text.isNotEmpty &&
+  //                     ssidController.text.isNotEmpty &&
+  //                     nameController.text.isNotEmpty) {
+  //                   viewModel.addDevice(
+  //                     Device(
+  //                       deviceId: idController.text,
+  //                       deviceName: nameController.text,
+  //                       deviceSSID: ssidController.text,
+  //                     ),
+  //                   );
+  //                   Navigator.pop(context);
+  //                 }
+  //               },
+  //               child: const Text('Add'),
+  //             ),
+  //           ],
+  //         ),
+  //   );
+  // }
 
   void _showEditDeviceDialog(
     BuildContext context,

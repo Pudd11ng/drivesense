@@ -1,0 +1,65 @@
+[
+    {
+        "drivingHistoryId": "dh001",
+        "startTime": "2025-04-08T08:30:00Z",
+        "endTime": "2025-04-08T09:15:00Z",
+        "accident": [],
+        "riskyBehaviour": [
+            {
+                "behaviourId": "rb001",
+                "delectedTime": "2025-04-08T08:45:00Z",
+                "behaviourType": "Drowsiness",
+                "alertTypeName": "Audio"
+            }
+        ]
+    },
+    {
+        "drivingHistoryId": "dh002",
+        "startTime": "2025-04-05T17:30:00Z",
+        "endTime": "2025-04-05T18:45:00Z",
+        "accident": [],
+        "riskyBehaviour": [
+            {
+                "behaviourId": "rb002",
+                "delectedTime": "2025-04-05T18:10:00Z",
+                "behaviourType": "Distraction",
+                "alertTypeName": "Alarm"
+            },
+            {
+                "behaviourId": "rb003",
+                "delectedTime": "2025-04-05T18:30:00Z",
+                "behaviourType": "Phone Usage",
+                "alertTypeName": "Alarm"
+            }
+        ]
+    },
+    {
+        "drivingHistoryId": "dh003",
+        "startTime": "2025-04-03T14:00:00Z",
+        "endTime": "2025-04-03T14:45:00Z",
+        "accident": [
+            {
+                "accidentId": "acc001",
+                "delectedTime": "2025-04-03T14:30:00Z",
+                "location": "Main Street",
+                "contactNum": "911",
+                "contactTime": "10 min"
+            }
+        ],
+        "riskyBehaviour": []
+    },
+    {
+        "drivingHistoryId": "dh004",
+        "startTime": "2025-03-28T09:00:00Z",
+        "endTime": "2025-03-28T10:30:00Z",
+        "accident": [],
+        "riskyBehaviour": [
+            {
+                "behaviourId": "rb004",
+                "delectedTime": "2025-03-28T09:45:00Z",
+                "behaviourType": "Drowsiness",
+                "alertTypeName": "Audio"
+            }
+        ]
+    }
+]
