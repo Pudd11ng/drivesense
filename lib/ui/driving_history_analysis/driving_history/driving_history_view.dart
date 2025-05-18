@@ -134,7 +134,7 @@ class _DrivingHistoryViewState extends State<DrivingHistoryView> {
         color: const Color(0xFF1A237E),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha:0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -261,7 +261,7 @@ class _DrivingHistoryViewState extends State<DrivingHistoryView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A237E).withOpacity(0.1),
+                  color: const Color(0xFF1A237E).withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.drive_eta, color: Color(0xFF1A237E)),

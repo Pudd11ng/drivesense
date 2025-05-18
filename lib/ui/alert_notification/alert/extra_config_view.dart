@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:go_router/go_router.dart';
 import 'package:drivesense/ui/alert_notification/view_model/alert_view_model.dart';
+import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
 import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
+import 'package:drivesense/ui/core/themes/colors.dart';
 
 final List<String> behaviours = [
   'Drowsiness',
@@ -39,42 +42,61 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
         });
       }
     });
+  }
 
-    @override
-    void dispose() {
-      _audioPlayer.dispose();
-      super.dispose();
-    }
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppColors.black : AppColors.white;
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+    
     return Consumer<AlertViewModel>(
       builder: (context, viewModel, child) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              widget.alertTypeName,
-              style: TextStyle(color: Colors.black),
-            ),
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
-            ),
+          backgroundColor: backgroundColor,
+          appBar: AppHeaderBar(
+            title: widget.alertTypeName,
+            leading: Icon(Icons.arrow_back),
+            onLeadingPressed: () => context.pop(),
           ),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Alert',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                Row(
+                  children: [
+                    Icon(
+                      _getHeaderIcon(),
+                      color: accentColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Configure Alert Sounds',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                _buildBehaviorsList(viewModel),
+                const SizedBox(height: 8),
+                Text(
+                  _getHeaderDescription(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: isDarkMode ? AppColors.greyBlue : AppColors.grey,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildBehaviorsList(viewModel, isDarkMode, accentColor),
               ],
             ),
           ),
@@ -86,20 +108,62 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
     );
   }
 
-  Widget _buildBehaviorsList(AlertViewModel viewModel) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A237E),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: behaviours.length,
-        itemBuilder: (context, index) {
-          final behaviour = behaviours[index];
-          return _buildBehaviorItem(context, viewModel, behaviour, index);
-        },
+  IconData _getHeaderIcon() {
+    switch (widget.alertTypeName) {
+      case 'Audio':
+        return Icons.notifications_active;
+      case 'Self-Configured Audio':
+        return Icons.settings_voice;
+      case 'Music':
+        return Icons.music_note;
+      default:
+        return Icons.notifications_active;
+    }
+  }
+
+  String _getHeaderDescription() {
+    switch (widget.alertTypeName) {
+      case 'Audio':
+        return 'Set predefined audio alerts for different behaviors';
+      case 'Self-Configured Audio':
+        return 'Upload custom audio files for each detection type';
+      case 'Music':
+        return 'Select songs to play when behaviors are detected';
+      default:
+        return 'Configure alert preferences';
+    }
+  }
+
+  Widget _buildBehaviorsList(AlertViewModel viewModel, bool isDarkMode, Color accentColor) {
+    final containerColor = isDarkMode ? AppColors.darkBlue.withAlpha(150) : accentColor;
+    
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          color: containerColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blackTransparent.withAlpha(20),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: behaviours.length,
+          separatorBuilder: (context, index) => Divider(
+            color: AppColors.white.withAlpha(60),
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+          ),
+          itemBuilder: (context, index) {
+            final behaviour = behaviours[index];
+            return _buildBehaviorItem(context, viewModel, behaviour, isDarkMode);
+          },
+        ),
       ),
     );
   }
@@ -108,7 +172,7 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
     BuildContext context,
     AlertViewModel viewModel,
     String behaviour,
-    int index,
+    bool isDarkMode,
   ) {
     String? file;
 
@@ -121,49 +185,90 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
     }
 
     bool isThisItemPlaying = _isPlaying && _currentPlayingItem == behaviour;
+    String displayName = file ?? 'No file selected';
+    
+    // Truncate long file names
+    if (displayName.length > 20) {
+      displayName = '${displayName.substring(0, 17)}...';
+    }
 
-    return Container(
-      decoration: BoxDecoration(
-        border:
-            index != behaviours.length - 1
-                ? const Border(
-                  bottom: BorderSide(color: Colors.white24, width: 0.5),
-                )
-                : null,
-      ),
-      child: ListTile(
-        title: Text(
-          behaviour,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w400,
-          ),
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.white.withAlpha(20),
+          borderRadius: BorderRadius.circular(8),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              file ?? '',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+        child: Icon(
+          _getBehaviorIcon(behaviour),
+          color: AppColors.white,
+          size: 22,
+        ),
+      ),
+      title: Text(
+        behaviour,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: AppColors.white,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        displayName,
+        style: TextStyle(color: AppColors.white.withAlpha(180), fontSize: 12),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (file != null)
+            IconButton(
+              icon: Icon(
+                isThisItemPlaying ? Icons.stop : Icons.play_arrow,
+                color: AppColors.white,
+              ),
+              onPressed: () => _playOrPauseAudio(behaviour, file!),
             ),
-            const SizedBox(width: 8),
-            Icon(_getIconForAlertType(file), color: Colors.white),
-          ],
-        ),
-        onTap: () {
-          _showFileSelectionDialog(context, viewModel, behaviour);
-        },
+          IconButton(
+            icon: Icon(
+              _getActionIconForAlertType(file),
+              color: AppColors.white,
+            ),
+            onPressed: () {
+              _showFileSelectionDialog(context, viewModel, behaviour);
+            },
+          ),
+        ],
       ),
+      onTap: () {
+        _showFileSelectionDialog(context, viewModel, behaviour);
+      },
     );
   }
 
-  IconData _getIconForAlertType(String? file) {
+  IconData _getBehaviorIcon(String behaviour) {
+    switch (behaviour) {
+      case 'Drowsiness':
+        return Icons.nightlight;
+      case 'Distraction':
+        return Icons.remove_red_eye;
+      case 'Intoxication':
+        return Icons.warning;
+      case 'Distress':
+        return Icons.sentiment_very_dissatisfied;
+      case 'Phone Usage':
+        return Icons.phone_android;
+      default:
+        return Icons.assignment_late;
+    }
+  }
+
+  IconData _getActionIconForAlertType(String? file) {
     if (widget.alertTypeName == 'Audio') {
       return Icons.headphones;
     } else if (widget.alertTypeName == 'Self-Configured Audio') {
-      return file != null ? Icons.headphones : Icons.upload_file;
+      return file != null ? Icons.edit : Icons.upload_file;
     } else {
-      return file != null ? Icons.headphones : Icons.upload_file;
+      return file != null ? Icons.edit : Icons.library_music;
     }
   }
 
@@ -205,13 +310,19 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Audio file "$fileName" selected for $behaviour'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error selecting audio file')),
+          const SnackBar(
+            content: Text('Error selecting audio file'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -222,84 +333,156 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
     AlertViewModel viewModel,
     String behaviour,
   ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppColors.black : AppColors.white;
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+    
     showDialog(
       context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text('Select Music for $behaviour'),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Search field
-                      TextField(
-                        decoration: const InputDecoration(
-                          hintText: 'Search songs...',
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) {
-                          // In a real implementation, this would trigger Spotify API search
-                          // setState(() { searchResults = ... });
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: backgroundColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Select Music for $behaviour',
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 400, // Fixed height
+              child: Column(
+                children: [
+                  // Search field
+                  TextField(
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      hintText: 'Search songs...',
+                      hintStyle: TextStyle(color: isDarkMode ? AppColors.greyBlue : AppColors.grey),
+                      prefixIcon: Icon(Icons.search, color: accentColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? AppColors.greyBlue : AppColors.lightGrey),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? AppColors.greyBlue : AppColors.lightGrey),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: accentColor, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: isDarkMode ? AppColors.darkGrey.withAlpha(50) : AppColors.lightGrey.withAlpha(50),
+                    ),
+                    onChanged: (value) {
+                      // In a real implementation, this would trigger Spotify API search
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Song list
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: ListView.builder(
+                        itemCount: _getMockSpotifySongs().length,
+                        itemBuilder: (context, index) {
+                          final song = _getMockSpotifySongs()[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? AppColors.darkGrey.withAlpha(80) : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDarkMode ? AppColors.greyBlue.withAlpha(80) : AppColors.lightGrey,
+                                width: 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  song['imageUrl']!,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, obj, st) => Container(
+                                    width: 50,
+                                    height: 50,
+                                    color: isDarkMode ? AppColors.darkGrey : AppColors.lightGrey,
+                                    child: Icon(Icons.music_note, color: accentColor),
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                song['title']!,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              subtitle: Text(
+                                song['artist']!,
+                                style: TextStyle(
+                                  color: isDarkMode ? AppColors.greyBlue : AppColors.grey,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(Icons.play_circle_outline, color: accentColor),
+                                onPressed: () {
+                                  // Preview song
+                                },
+                              ),
+                              onTap: () {
+                                // Update viewModel with selected song
+                                // viewModel.updateMusicFile(behaviour, song['title']);
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${song['title']} selected for $behaviour',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      // Song list (popular songs or search results)
-                      Expanded(
-                        child: ListView(
-                          children:
-                              _getMockSpotifySongs().map((song) {
-                                return ListTile(
-                                  leading: ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Image.network(
-                                      song['imageUrl']!,
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (ctx, obj, st) => Container(
-                                            width: 40,
-                                            height: 40,
-                                            color: Colors.grey[300],
-                                            child: const Icon(Icons.music_note),
-                                          ),
-                                    ),
-                                  ),
-                                  title: Text(song['title']!),
-                                  subtitle: Text(song['artist']!),
-                                  onTap: () {
-                                    // Update viewModel with selected song
-                                    // viewModel.updateMusicFile(behaviour, song['title']);
-                                    Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '${song['title']} selected for $behaviour',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: isDarkMode ? AppColors.greyBlue : AppColors.grey,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Done'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -327,16 +510,9 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
         } else if (widget.alertTypeName == 'Self-Configured Audio') {
           // For Self-Configured Audio, we'd play the actual file
           // This is a placeholder - in production you'd use the real file path
-          // await _audioPlayer.setAsset('assets/audio/custom/$fileName');
+          await _audioPlayer.setAsset('assets/audio/custom/$fileName');
         } else {
-          // For Music, play the Spotify preview URL (this is a placeholder)
-          // In production, you'd get the actual streaming URL from Spotify API
-          final song = _getMockSpotifySongs().firstWhere(
-            (song) => song['title'] == fileName,
-            orElse: () => {'preview_url': 'https://example.com/preview.mp3'},
-          );
-
-          // Use a sample URL for demo purposes
+          // For Music, use a sample URL for demo purposes
           await _audioPlayer.setUrl(
             'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
           );
@@ -345,9 +521,13 @@ class _ExtraConfigViewState extends State<ExtraConfigView> {
         await _audioPlayer.play();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error playing audio: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error playing audio: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            )
+          );
         }
       }
     }

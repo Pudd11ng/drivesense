@@ -293,25 +293,41 @@ class _RegisterViewState extends State<RegisterView> {
     );
   }
 
-  void _register() {
+  void _register() async {
     if (_formKey.currentState!.validate()) {
       final viewModel = Provider.of<UserManagementViewModel>(
         context,
         listen: false,
       );
-      viewModel.registerWithEmailPassword(
+      final success = await viewModel.registerWithEmailPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+
+      if (success && mounted) {
+        if (viewModel.needsProfileCompletion) {
+          context.go('/profile_completion');
+        } else {
+          context.go('/');
+        }
+      }
     }
   }
 
-  void _googleSignUp() {
+  void _googleSignUp() async {
     final viewModel = Provider.of<UserManagementViewModel>(
       context,
       listen: false,
     );
-    viewModel.signInWithGoogle();
+    final success = await viewModel.signInWithGoogle();
+
+    if (success && mounted) {
+      if (viewModel.needsProfileCompletion) {
+        context.go('/profile_completion');
+      } else {
+        context.go('/');
+      }
+    }
   }
 
   @override

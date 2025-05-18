@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:drivesense/domain/models/driving_history/driving_history.dart';
 import 'package:drivesense/domain/models/accident/accident.dart';
 import 'package:drivesense/domain/models/risky_behaviour/risky_behaviour.dart';
 import 'package:drivesense/ui/driving_history_analysis/view_model/analysis_view_model.dart';
 import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
+import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
+import 'package:drivesense/ui/core/themes/colors.dart';
 
 class DrivingAnalysisView extends StatefulWidget {
   final String drivingHistoryId;
@@ -35,6 +38,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? AppColors.black : AppColors.white;
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+
     return Consumer<AnalysisViewModel>(
       builder: (context, viewModel, child) {
         final drivingHistory = viewModel.getDrivingHistoryById(
@@ -43,33 +51,36 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
 
         if (drivingHistory == null) {
           return Scaffold(
-            appBar: AppBar(
-              title: const Text('Driving Analysis'),
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
+            appBar: AppHeaderBar(
+              title: 'Driving Analysis',
+              leading: Icon(Icons.arrow_back),
+              onLeadingPressed: () => context.pop(),
             ),
-            body: const Center(child: Text('Driving session not found')),
+            body: Center(
+              child: Text(
+                'Driving session not found',
+                style: TextStyle(color: textColor),
+              ),
+            ),
+            backgroundColor: backgroundColor,
           );
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text(
-              'Driving Analysis',
-              style: TextStyle(color: Colors.black),
-            ),
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
-            ),
+          backgroundColor: backgroundColor,
+          appBar: AppHeaderBar(
+            title: 'Driving Analysis',
+            leading: Icon(Icons.arrow_back),
+            onLeadingPressed: () => context.pop(),
             actions: [
               IconButton(
-                icon: const Icon(Icons.share, color: Colors.black),
+                icon: Icon(Icons.share, color: accentColor),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sharing not implemented')),
+                    SnackBar(
+                      content: Text('Sharing not implemented'),
+                      backgroundColor: accentColor,
+                    ),
                   );
                 },
               ),
@@ -78,12 +89,12 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDrivingSummary(context, drivingHistory, viewModel),
+              _buildDrivingSummary(context, drivingHistory, viewModel, isDarkMode),
               TabBar(
                 controller: _tabController,
-                labelColor: const Color(0xFF1A237E),
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: const Color(0xFF1A237E),
+                labelColor: accentColor,
+                unselectedLabelColor: isDarkMode ? AppColors.greyBlue : AppColors.grey,
+                indicatorColor: accentColor,
                 tabs: const [
                   Tab(text: 'OVERVIEW'),
                   Tab(text: 'TIMELINE'),
@@ -94,9 +105,9 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildOverviewTab(context, drivingHistory, viewModel),
-                    _buildTimelineTab(context, drivingHistory, viewModel),
-                    _buildStatsTab(context, drivingHistory, viewModel),
+                    _buildOverviewTab(context, drivingHistory, viewModel, isDarkMode),
+                    _buildTimelineTab(context, drivingHistory, viewModel, isDarkMode),
+                    _buildStatsTab(context, drivingHistory, viewModel, isDarkMode),
                   ],
                 ),
               ),
@@ -114,15 +125,22 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     BuildContext context,
     DrivingHistory history,
     AnalysisViewModel viewModel,
+    bool isDarkMode,
   ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A237E),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [AppColors.darkBlue, AppColors.blue.withValues(alpha: 0.8)]
+              : [AppColors.darkBlue, AppColors.blue],
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: AppColors.blackTransparent.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -133,27 +151,26 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
         children: [
           Text(
             viewModel.formatDate(history.startTime),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.access_time, color: Colors.white70, size: 16),
+              const Icon(Icons.access_time, color: AppColors.white, size: 16),
               const SizedBox(width: 4),
               Text(
                 '${viewModel.formatTime(history.startTime)} - ${viewModel.formatTime(history.endTime)}',
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppColors.white.withValues(alpha: 0.9)),
               ),
               const SizedBox(width: 16),
-              const Icon(Icons.timer, color: Colors.white70, size: 16),
+              const Icon(Icons.timer, color: AppColors.white, size: 16),
               const SizedBox(width: 4),
               Text(
                 viewModel.getFormattedDuration(history),
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppColors.white.withValues(alpha: 0.9)),
               ),
             ],
           ),
@@ -162,18 +179,21 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildSummaryItem(
+                context,
                 '${history.riskyBehaviour.length}',
                 'Alerts',
                 Icons.warning_amber,
                 Colors.amber,
               ),
               _buildSummaryItem(
+                context,
                 '${history.accident.length}',
                 'Accidents',
                 Icons.car_crash,
                 Colors.red,
               ),
               _buildSummaryItem(
+                context,
                 viewModel.calculateRiskScore(history).toString(),
                 'Risk Score',
                 Icons.speed,
@@ -187,6 +207,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
   }
 
   Widget _buildSummaryItem(
+    BuildContext context,
     String value,
     String label,
     IconData icon,
@@ -197,7 +218,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.2),
+            color: iconColor.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: iconColor, size: 24),
@@ -205,15 +226,16 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.bold,
+              ),
         ),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.white.withValues(alpha: 0.9),
+              ),
         ),
       ],
     );
@@ -223,27 +245,38 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     BuildContext context,
     DrivingHistory history,
     AnalysisViewModel viewModel,
+    bool isDarkMode,
   ) {
+    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('Risk Analysis'),
+          _buildSectionHeader('Risk Analysis', accentColor, textColor),
           Card(
-            elevation: 2,
+            color: cardColor,
+            elevation: isDarkMode ? 0 : 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: isDarkMode
+                  ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+                  : BorderSide.none,
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildRiskChart(history),
+                  _buildRiskChart(history, textColor, isDarkMode),
                   const SizedBox(height: 16),
                   Text(
                     viewModel.getRiskAnalysis(history),
-                    style: const TextStyle(fontSize: 14),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: textColor,
+                        ),
                   ),
                 ],
               ),
@@ -252,14 +285,14 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           const SizedBox(height: 24),
 
           if (history.riskyBehaviour.isNotEmpty) ...[
-            _buildSectionHeader('Risk Alerts'),
-            _buildRiskyBehaviorOverview(history.riskyBehaviour),
+            _buildSectionHeader('Risk Alerts', accentColor, textColor),
+            _buildRiskyBehaviorOverview(history.riskyBehaviour, context, isDarkMode),
           ],
 
           if (history.accident.isNotEmpty) ...[
             const SizedBox(height: 24),
-            _buildSectionHeader('Accident Details'),
-            _buildAccidentOverview(history.accident),
+            _buildSectionHeader('Accident Details', accentColor, textColor),
+            _buildAccidentOverview(history.accident, context, isDarkMode),
           ],
         ],
       ),
@@ -270,7 +303,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     BuildContext context,
     DrivingHistory history,
     AnalysisViewModel viewModel,
+    bool isDarkMode,
   ) {
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+
     // Combine accidents and risky behaviors into a single timeline
     final events = <Map<String, dynamic>>[];
 
@@ -295,88 +332,111 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
       (a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime),
     );
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: events.length,
-      itemBuilder: (context, index) {
-        final event = events[index];
-        final time = event['time'] as DateTime;
-        final type = event['type'] as String;
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: type == 'accident' ? Colors.red : Colors.amber,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Icon(
-                      type == 'accident' ? Icons.car_crash : Icons.warning,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                  ),
-                ),
-                if (index != events.length - 1)
-                  Container(
-                    width: 2,
-                    height: 50,
-                    color: Colors.grey.withOpacity(0.3),
-                  ),
-              ],
+    return events.isEmpty
+        ? Center(
+            child: Text(
+              'No events recorded for this drive',
+              style: TextStyle(color: textColor),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: events.length,
+            itemBuilder: (context, index) {
+              final event = events[index];
+              final time = event['time'] as DateTime;
+              final type = event['type'] as String;
+
+              return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    DateFormat('h:mm a').format(time),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: type == 'accident' ? Colors.red : Colors.black,
+                  Column(
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: type == 'accident' ? Colors.red : Colors.amber,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            type == 'accident' ? Icons.car_crash : Icons.warning,
+                            color: AppColors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                      if (index != events.length - 1)
+                        Container(
+                          width: 2,
+                          height: 50,
+                          color: isDarkMode
+                              ? AppColors.greyBlue.withValues(alpha: 0.3)
+                              : AppColors.grey.withValues(alpha: 0.3),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat('h:mm a').format(time),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: type == 'accident' ? Colors.red : textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Card(
+                          elevation: isDarkMode ? 0 : 1,
+                          color: cardColor,
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: isDarkMode
+                                ? BorderSide(
+                                    color: AppColors.greyBlue.withValues(alpha: 0.2),
+                                  )
+                                : BorderSide.none,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: type == 'accident'
+                                ? _buildAccidentTimelineItem(
+                                    event['data'] as Accident,
+                                    textColor,
+                                  )
+                                : _buildRiskyBehaviorTimelineItem(
+                                    event['data'] as RiskyBehaviour,
+                                    textColor,
+                                    context,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Card(
-                    elevation: 1,
-                    margin: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child:
-                          type == 'accident'
-                              ? _buildAccidentTimelineItem(
-                                event['data'] as Accident,
-                              )
-                              : _buildRiskyBehaviorTimelineItem(
-                                event['data'] as RiskyBehaviour,
-                              ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                 ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
+              );
+            },
+          );
   }
 
   Widget _buildStatsTab(
     BuildContext context,
     DrivingHistory history,
     AnalysisViewModel viewModel,
+    bool isDarkMode,
   ) {
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+    final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
+
     // Calculate behavior types count
     final behaviorTypeCounts = <String, int>{};
     for (var behavior in history.riskyBehaviour) {
@@ -390,10 +450,10 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
               (entry) => PieChartSectionData(
                 value: entry.value.toDouble(),
                 title: '${entry.value}',
-                color: _getBehaviorTypeColor(entry.key),
+                color: _getBehaviorTypeColor(entry.key, isDarkMode),
                 radius: 60,
                 titleStyle: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -407,7 +467,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (behaviorTypeCounts.isNotEmpty) ...[
-            _buildSectionHeader('Risk Behavior Distribution'),
+            _buildSectionHeader('Risk Behavior Distribution', accentColor, textColor),
             SizedBox(
               height: 300,
               child: PieChart(
@@ -430,25 +490,29 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                       width: 16,
                       height: 16,
                       decoration: BoxDecoration(
-                        color: _getBehaviorTypeColor(entry.key),
+                        color: _getBehaviorTypeColor(entry.key, isDarkMode),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '${entry.key}: ${entry.value}',
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
           ] else
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Text(
                   'No risk behaviors detected during this drive',
+                  style: TextStyle(color: secondaryTextColor),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -456,11 +520,15 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
 
           const SizedBox(height: 24),
 
-          _buildSectionHeader('Session Metrics'),
+          _buildSectionHeader('Session Metrics', accentColor, textColor),
           Card(
-            elevation: 2,
+            elevation: isDarkMode ? 0 : 2,
+            color: cardColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: isDarkMode
+                  ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+                  : BorderSide.none,
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -469,23 +537,38 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                   _buildMetricRow(
                     'Duration',
                     viewModel.getFormattedDuration(history),
+                    textColor,
+                    secondaryTextColor,
                   ),
                   _buildMetricRow(
                     'Risk Alerts',
                     '${history.riskyBehaviour.length}',
+                    textColor,
+                    secondaryTextColor,
                   ),
-                  _buildMetricRow('Accidents', '${history.accident.length}'),
+                  _buildMetricRow(
+                    'Accidents',
+                    '${history.accident.length}',
+                    textColor,
+                    secondaryTextColor,
+                  ),
                   _buildMetricRow(
                     'Risk Score',
                     viewModel.calculateRiskScore(history).toString(),
+                    textColor,
+                    secondaryTextColor,
                   ),
                   _buildMetricRow(
                     'Start Time',
                     viewModel.formatTime(history.startTime),
+                    textColor,
+                    secondaryTextColor,
                   ),
                   _buildMetricRow(
                     'End Time',
                     viewModel.formatTime(history.endTime),
+                    textColor,
+                    secondaryTextColor,
                   ),
                 ],
               ),
@@ -496,21 +579,20 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, Color accentColor, Color textColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1A237E),
-        ),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
       ),
     );
   }
 
-  Widget _buildRiskChart(DrivingHistory history) {
+  Widget _buildRiskChart(DrivingHistory history, Color textColor, bool isDarkMode) {
     return SizedBox(
       height: 200,
       child: Stack(
@@ -518,7 +600,10 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
         children: [
           Text(
             '${_calculateOverallRisk(history)}%',
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
           ),
           PieChart(
             PieChartData(
@@ -528,13 +613,16 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                   value: _calculateOverallRisk(history).toDouble(),
                   color: _getRiskColor(
                     _calculateOverallRisk(history).toDouble(),
+                    isDarkMode,
                   ),
                   radius: 20,
                   showTitle: false,
                 ),
                 PieChartSectionData(
                   value: 100 - _calculateOverallRisk(history).toDouble(),
-                  color: Colors.grey.shade200,
+                  color: isDarkMode
+                      ? AppColors.greyBlue.withValues(alpha: 0.2)
+                      : Colors.grey.shade200,
                   radius: 20,
                   showTitle: false,
                 ),
@@ -567,16 +655,30 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     return riskPercentage.clamp(0, 100);
   }
 
-  Color _getRiskColor(double risk) {
-    if (risk < 30) return Colors.green;
-    if (risk < 70) return Colors.orange;
-    return Colors.red;
+  Color _getRiskColor(double risk, bool isDarkMode) {
+    if (risk < 30) return isDarkMode ? Colors.green.shade400 : Colors.green;
+    if (risk < 70) return isDarkMode ? Colors.orange.shade300 : Colors.orange;
+    return isDarkMode ? Colors.red.shade300 : Colors.red;
   }
 
-  Widget _buildRiskyBehaviorOverview(List<RiskyBehaviour> behaviors) {
+  Widget _buildRiskyBehaviorOverview(
+    List<RiskyBehaviour> behaviors,
+    BuildContext context,
+    bool isDarkMode,
+  ) {
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+    final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
+
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: isDarkMode ? 0 : 2,
+      color: cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isDarkMode
+            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -588,7 +690,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _getRiskyBehaviorIcon(behavior.behaviourType),
+                      _getRiskyBehaviorIcon(behavior.behaviourType, isDarkMode),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -596,22 +698,22 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                           children: [
                             Text(
                               behavior.behaviourType,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
                             ),
                             Text(
-                              DateFormat(
-                                'h:mm a',
-                              ).format(behavior.delectedTime),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
+                              DateFormat('h:mm a').format(behavior.delectedTime),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: secondaryTextColor,
+                                  ),
                             ),
                             Text(
                               'Alert: ${behavior.alertTypeName}',
-                              style: const TextStyle(fontSize: 12),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: textColor,
+                                  ),
                             ),
                           ],
                         ),
@@ -625,10 +727,24 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     );
   }
 
-  Widget _buildAccidentOverview(List<Accident> accidents) {
+  Widget _buildAccidentOverview(
+    List<Accident> accidents,
+    BuildContext context,
+    bool isDarkMode,
+  ) {
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+    final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
+
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: isDarkMode ? 0 : 2,
+      color: cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isDarkMode
+            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -643,7 +759,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.car_crash, color: Colors.red),
@@ -655,22 +771,26 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                           children: [
                             Text(
                               'Accident at ${accident.location}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
                             ),
                             Text(
-                              DateFormat(
-                                'h:mm a',
-                              ).format(accident.delectedTime),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
+                              DateFormat('h:mm a').format(accident.delectedTime),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: secondaryTextColor,
+                                  ),
                             ),
                             const SizedBox(height: 4),
-                            Text('Emergency Contact: ${accident.contactNum}'),
-                            Text('Response Time: ${accident.contactTime}'),
+                            Text(
+                              'Emergency Contact: ${accident.contactNum}',
+                              style: TextStyle(color: textColor),
+                            ),
+                            Text(
+                              'Response Time: ${accident.contactTime}',
+                              style: TextStyle(color: textColor),
+                            ),
                           ],
                         ),
                       ),
@@ -683,11 +803,15 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     );
   }
 
-  Widget _buildRiskyBehaviorTimelineItem(RiskyBehaviour behavior) {
+  Widget _buildRiskyBehaviorTimelineItem(
+    RiskyBehaviour behavior,
+    Color textColor,
+    BuildContext context,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _getRiskyBehaviorIcon(behavior.behaviourType),
+        _getRiskyBehaviorIcon(behavior.behaviourType, Theme.of(context).brightness == Brightness.dark),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -695,12 +819,17 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
             children: [
               Text(
                 behavior.behaviourType,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Alert Type: ${behavior.alertTypeName}',
-                style: const TextStyle(fontSize: 14),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: textColor,
+                    ),
               ),
             ],
           ),
@@ -709,23 +838,31 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     );
   }
 
-  Widget _buildAccidentTimelineItem(Accident accident) {
+  Widget _buildAccidentTimelineItem(Accident accident, Color textColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Accident Detected',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
         ),
         const SizedBox(height: 8),
-        Text('Location: ${accident.location}'),
-        Text('Emergency Contact: ${accident.contactNum}'),
-        Text('Response Time: ${accident.contactTime}'),
+        Text('Location: ${accident.location}', style: TextStyle(color: textColor)),
+        Text('Emergency Contact: ${accident.contactNum}', style: TextStyle(color: textColor)),
+        Text('Response Time: ${accident.contactTime}', style: TextStyle(color: textColor)),
       ],
     );
   }
 
-  Widget _buildMetricRow(String label, String value) {
+  Widget _buildMetricRow(
+    String label,
+    String value,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -735,69 +872,75 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
             label,
             style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
+              color: secondaryTextColor,
             ),
           ),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _getRiskyBehaviorIcon(String behaviourType) {
+  Widget _getRiskyBehaviorIcon(String behaviourType, bool isDarkMode) {
     IconData iconData;
     Color iconColor;
 
     switch (behaviourType.toLowerCase()) {
       case 'drowsiness':
         iconData = Icons.bedtime_outlined;
-        iconColor = Colors.purple;
+        iconColor = isDarkMode ? Colors.purple.shade300 : Colors.purple;
         break;
       case 'distraction':
         iconData = Icons.phone_android;
-        iconColor = Colors.blue;
+        iconColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
         break;
       case 'intoxication':
         iconData = Icons.local_bar;
-        iconColor = Colors.red;
+        iconColor = isDarkMode ? Colors.red.shade300 : Colors.red;
         break;
       case 'phone usage':
         iconData = Icons.smartphone;
-        iconColor = Colors.orange;
+        iconColor = isDarkMode ? Colors.orange.shade300 : Colors.orange;
         break;
       case 'distress':
         iconData = Icons.sentiment_very_dissatisfied;
-        iconColor = Colors.red;
+        iconColor = isDarkMode ? Colors.red.shade300 : Colors.red;
         break;
       default:
         iconData = Icons.warning_amber;
-        iconColor = Colors.amber;
+        iconColor = isDarkMode ? Colors.amber.shade300 : Colors.amber;
     }
 
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
+        color: iconColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(iconData, color: iconColor),
     );
   }
 
-  Color _getBehaviorTypeColor(String type) {
+  Color _getBehaviorTypeColor(String type, bool isDarkMode) {
     switch (type.toLowerCase()) {
       case 'drowsiness':
-        return Colors.purple;
+        return isDarkMode ? Colors.purple.shade300 : Colors.purple;
       case 'distraction':
-        return Colors.blue;
+        return isDarkMode ? Colors.blue.shade300 : Colors.blue;
       case 'intoxication':
-        return Colors.red;
+        return isDarkMode ? Colors.red.shade300 : Colors.red;
       case 'phone usage':
-        return Colors.orange;
+        return isDarkMode ? Colors.orange.shade300 : Colors.orange;
       case 'distress':
-        return Colors.red.shade700;
+        return isDarkMode ? Colors.red.shade400 : Colors.red.shade700;
       default:
-        return Colors.amber;
+        return isDarkMode ? Colors.amber.shade300 : Colors.amber;
     }
   }
 }

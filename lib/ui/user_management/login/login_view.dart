@@ -274,16 +274,24 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 
-  void _login() {
+  void _login() async {
     if (_formKey.currentState!.validate()) {
       final viewModel = Provider.of<UserManagementViewModel>(
         context,
         listen: false,
       );
-      viewModel.loginWithEmailPassword(
+      final success = await viewModel.loginWithEmailPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      
+      if (success && mounted) {
+        if (viewModel.needsProfileCompletion) {
+          context.go('/profile_completion');
+        } else {
+          context.go('/');
+        }
+      }
     }
   }
 
@@ -292,11 +300,15 @@ class _LoginViewState extends State<LoginView> {
       context,
       listen: false,
     );
-    viewModel.signInWithGoogle().then((success) {
-      if (success && mounted) {
+    final success = await viewModel.signInWithGoogle();
+
+    if (success && mounted) {
+      if (viewModel.needsProfileCompletion) {
+        context.go('/profile_completion');
+      } else {
         context.go('/');
       }
-    });
+    }
   }
 
   @override

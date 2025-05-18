@@ -1,56 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
-import 'package:drivesense/domain/models/user/user.dart';
 import 'package:drivesense/constants/countries.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
 import 'package:drivesense/ui/core/themes/colors.dart';
 
-class ProfileView extends StatefulWidget {
-  const ProfileView({super.key});
+class ProfileCompletionView extends StatefulWidget {
+  const ProfileCompletionView({super.key});
 
   @override
-  State<ProfileView> createState() => _ProfileViewState();
+  State<ProfileCompletionView> createState() => _ProfileCompletionViewState();
 }
 
-class _ProfileViewState extends State<ProfileView> {
+class _ProfileCompletionViewState extends State<ProfileCompletionView> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _firstNameController;
-  late final TextEditingController _lastNameController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _dobController;
-  String? _selectedCountry;
-  DateTime? _selectedDate;
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _dobController = TextEditingController();
 
-  bool _isLoading = false;
+  DateTime? _selectedDate;
+  String? _selectedCountry;
+
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
 
-    _firstNameController = TextEditingController();
-    _lastNameController = TextEditingController();
-    _emailController = TextEditingController();
-    _dobController = TextEditingController();
-  }
-
-  void _initializeData(User user) {
-    _firstNameController.text = user.firstName;
-    _lastNameController.text = user.lastName;
-    _emailController.text = user.email;
-    _dobController.text = user.dateOfBirth;
-    _selectedCountry = user.country;
-
-    try {
-      if (user.dateOfBirth.isNotEmpty) {
-        _selectedDate = DateFormat('yyyy-MM-dd').parse(user.dateOfBirth);
-      }
-    } catch (e) {
-      debugPrint('Error parsing date: $e');
+    // Pre-fill email if available from registration
+    final viewModel = Provider.of<UserManagementViewModel>(
+      context,
+      listen: false,
+    );
+    if (viewModel.user.email.isNotEmpty) {
+      _emailController.text = viewModel.user.email;
     }
+
+    // Set default country
+    _selectedCountry = "Malaysia";
   }
 
   @override
@@ -64,202 +54,131 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserManagementViewModel>(
-      builder: (context, viewModel, child) {
-        final user = viewModel.user;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final onSurfaceColor = Theme.of(context).colorScheme.onSurface;
 
-        if (_firstNameController.text.isEmpty) {
-          _initializeData(user);
-        }
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header with profile avatar
+                _buildProfileHeader(isDarkMode, onSurfaceColor),
 
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        final primaryColor = Theme.of(context).colorScheme.primary;
+                const SizedBox(height: 36),
 
-        return Scaffold(
-          appBar: AppHeaderBar(
-            title: 'Profile',
-            leading: Icon(Icons.arrow_back),
-            onLeadingPressed: () => context.go('/settings'),
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 80),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  _buildProfileHeader(user, isDarkMode),
-                  const SizedBox(height: 20),
+                // Form fields
+                _buildFormField(
+                  controller: _firstNameController,
+                  label: 'First Name',
+                  icon: Icons.person_outline,
+                  isDarkMode: isDarkMode,
+                  primaryColor: primaryColor,
+                  textCapitalization: TextCapitalization.words,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your first name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      children: [
-                        _buildFormField(
-                          controller: _firstNameController,
-                          label: 'First Name',
-                          icon: Icons.person_outline,
-                          isDarkMode: isDarkMode,
-                          primaryColor: primaryColor,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your first name';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
+                _buildFormField(
+                  controller: _lastNameController,
+                  label: 'Last Name',
+                  icon: Icons.person_outline,
+                  isDarkMode: isDarkMode,
+                  primaryColor: primaryColor,
+                  textCapitalization: TextCapitalization.words,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your last name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
 
-                        _buildFormField(
-                          controller: _lastNameController,
-                          label: 'Last Name',
-                          icon: Icons.person_outline,
-                          isDarkMode: isDarkMode,
-                          primaryColor: primaryColor,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your last name';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
+                _buildFormField(
+                  controller: _emailController,
+                  label: 'Email',
+                  icon: Icons.email_outlined,
+                  isDarkMode: isDarkMode,
+                  primaryColor: primaryColor,
+                  readOnly: true,
+                ),
+                const SizedBox(height: 16),
 
-                        _buildFormField(
-                          controller: _emailController,
-                          label: 'Email',
-                          icon: Icons.email_outlined,
-                          isDarkMode: isDarkMode,
-                          primaryColor: primaryColor,
-                          readOnly: true,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 16),
+                _buildDateField(context, isDarkMode, primaryColor),
+                const SizedBox(height: 16),
 
-                        _buildDateField(context, isDarkMode, primaryColor),
-                        const SizedBox(height: 16),
+                _buildCountryField(isDarkMode, primaryColor),
+                const SizedBox(height: 40),
 
-                        _buildCountryField(isDarkMode, primaryColor),
-                        const SizedBox(height: 30),
-
-                        _buildSaveButton(isDarkMode, viewModel),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                _buildSubmitButton(isDarkMode),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildProfileHeader(User user, bool isDarkMode) {
-    return Container(
-      width: double.infinity,
-      height: 100,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.darkBlue, AppColors.blue],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.blackTransparent.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  // Extracted methods for better organization
+  Widget _buildProfileHeader(bool isDarkMode, Color onSurfaceColor) {
+    return Center(
+      child: Column(
+        children: [
+          // Avatar with adaptive coloring
+          Container(
+            height: 110,
+            width: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  isDarkMode
+                      ? AppColors.darkBlue.withValues(alpha: 0.3)
+                      : AppColors.blue.withValues(alpha: 0.15),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.blackTransparent.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.person_outline,
+              size: 60,
+              color: isDarkMode ? AppColors.white : AppColors.darkBlue,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Tell us about yourself',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: onSurfaceColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Please provide your personal information\nto complete your profile',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
-          children: [
-            // Background patterns
-            Positioned(
-              right: -15,
-              top: -30,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 30,
-              bottom: -40,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.05),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 60,
-              top: 60,
-              child: Container(
-                width: 25,
-                height: 25,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.1),
-                ),
-              ),
-            ),
-            // Optional: Add subtle dots pattern
-            for (int i = 0; i < 5; i++)
-              Positioned(
-                left: 20.0 + (i * 15),
-                bottom: 10,
-                child: Container(
-                  width: 4,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.white.withValues(alpha: 0.2),
-                  ),
-                ),
-              ),
-
-            // Content on top of patterns
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Text greeting
-                  Expanded(
-                    child: Text(
-                      'Hi, ${user.firstName}',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineLarge?.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  // Editable form widgets
   Widget _buildFormField({
     required TextEditingController controller,
     required String label,
@@ -299,10 +218,6 @@ class _ProfileViewState extends State<ProfileView> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
         filled: true,
         fillColor:
             isDarkMode
@@ -310,6 +225,10 @@ class _ProfileViewState extends State<ProfileView> {
                 : (readOnly
                     ? AppColors.lightGrey.withValues(alpha: 0.7)
                     : AppColors.lightGrey),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         errorStyle: TextStyle(color: Theme.of(context).colorScheme.onError),
       ),
       textCapitalization: textCapitalization,
@@ -319,7 +238,7 @@ class _ProfileViewState extends State<ProfileView> {
       style: TextStyle(
         color:
             isDarkMode
-                ? AppColors.white.withValues(alpha: readOnly ? 0.7 : 1.0)
+                ? AppColors.white.withOpacity(readOnly ? 0.7 : 1.0)
                 : AppColors.darkGrey,
       ),
     );
@@ -331,7 +250,6 @@ class _ProfileViewState extends State<ProfileView> {
     Color primaryColor,
   ) {
     return FormField<DateTime>(
-      initialValue: _selectedDate,
       validator: (value) {
         if (_selectedDate == null) {
           return 'Please select your date of birth';
@@ -438,7 +356,7 @@ class _ProfileViewState extends State<ProfileView> {
                 child: Text(
                   state.errorText!,
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
+                    color: Theme.of(context).colorScheme.onError,
                     fontSize: 12.0,
                   ),
                 ),
@@ -553,42 +471,37 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildSaveButton(bool isDarkMode, UserManagementViewModel viewModel) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : () => _saveProfile(viewModel),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDarkMode ? AppColors.blue : AppColors.darkBlue,
-          disabledBackgroundColor:
-              isDarkMode
-                  ? AppColors.blue.withValues(alpha: 0.5)
-                  : AppColors.darkBlue.withValues(alpha: 0.5),
-          foregroundColor: AppColors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child:
-            _isLoading
-                ? SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    color: AppColors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                : Text(
-                  'Save Changes',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+  Widget _buildSubmitButton(bool isDarkMode) {
+    return ElevatedButton(
+      onPressed: _isSubmitting ? null : _submitProfile,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isDarkMode ? AppColors.blue : AppColors.darkBlue,
+        disabledBackgroundColor:
+            isDarkMode
+                ? AppColors.blue.withValues(alpha: 0.5)
+                : AppColors.darkBlue.withValues(alpha: 0.5),
+        foregroundColor: AppColors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
       ),
+      child:
+          _isSubmitting
+              ? SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: AppColors.white,
+                  strokeWidth: 2,
+                ),
+              )
+              : Text(
+                'Complete Profile',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
     );
   }
 
@@ -630,71 +543,89 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  void _saveProfile(UserManagementViewModel viewModel) async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  void _submitProfile() async {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select your date of birth'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
 
-    if (_selectedCountry == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select your country'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
+      if (_selectedCountry == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select your country'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      final viewModel = Provider.of<UserManagementViewModel>(
+        context,
+        listen: false,
       );
-      return;
-    }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final success = await viewModel.updateUserProfile(
-      firstName: _firstNameController.text,
-      lastName: _lastNameController.text,
-      email: _emailController.text,
-      dateOfBirth: _dobController.text,
-      country: _selectedCountry,
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
+      // Update user profile
+      final success = await viewModel.updateUserProfile(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim(),
+        dateOfBirth: _dobController.text,
+        country: _selectedCountry,
       );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Error Updating Profile',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 6),
-                Text(viewModel.errorMessage ?? 'Failed to update profile'),
-              ],
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile completed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate to home page after successful completion
+        context.go('/');
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Error Completing Profile',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(viewModel.errorMessage ?? 'Failed to complete profile'),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 6),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+        );
+      }
     }
   }
 }
