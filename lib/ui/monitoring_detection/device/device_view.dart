@@ -376,7 +376,7 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
                       // Simple MJPEG view without face detection
                       MJPEGView(
                         streamUrl: _streamUrl!,
-                        showLiveIcon: true,
+                        showLiveIcon: false,
                       ),
 
                       // Play/pause overlay
@@ -423,83 +423,6 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-          ),
-        ),
-
-        // Controls
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Camera Feed',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Connected to ${_device?.deviceName}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildControlButton(
-                    icon: _isStreaming ? Icons.pause : Icons.play_arrow,
-                    label: _isStreaming ? 'Pause' : 'Play',
-                    onPressed: _toggleStream,
-                    isDarkMode: isDarkMode,
-                  ),
-                  _buildControlButton(
-                    icon: Icons.refresh,
-                    label: 'Reload',
-                    onPressed: _initializeDeviceAndStream,
-                    isDarkMode: isDarkMode,
-                  ),
-                  _buildControlButton(
-                    icon: Icons.settings,
-                    label: 'Settings',
-                    onPressed: () async {
-                      await NetworkBinder.unbind();
-                      if (mounted) {
-                        context.go('/device_settings/${_device!.deviceId}');
-                      }
-                    },
-                    isDarkMode: isDarkMode,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required bool isDarkMode,
-  }) {
-    return Column(
-      children: [
-        IconButton(
-          icon: Icon(
-            icon,
-            size: 28,
-            color: isDarkMode ? AppColors.blue : AppColors.darkBlue,
-          ),
-          onPressed: onPressed,
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: isDarkMode ? AppColors.greyBlue : AppColors.grey,
           ),
         ),
       ],
