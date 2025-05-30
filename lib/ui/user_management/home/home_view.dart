@@ -18,7 +18,14 @@ class _HomeViewState extends State<HomeView> {
   @override
   void initState() {
     super.initState();
-    Provider.of<MonitoringViewModel>(context, listen: false).loadDeviceData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = Provider.of<MonitoringViewModel>(
+        context,
+        listen: false,
+      );
+      viewModel.loadDeviceData();
+      viewModel.refreshWifiConnection();
+    });
   }
 
   @override
@@ -193,266 +200,297 @@ class _HomeViewState extends State<HomeView> {
     MonitoringViewModel viewModel,
     bool isDarkMode,
   ) {
+    final isConnected = viewModel.currentWifiSSID == device.deviceSSID;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors:
-              isDarkMode
-                  ? [AppColors.darkBlue, AppColors.blue.withValues(alpha: 0.8)]
-                  : [AppColors.darkBlue, AppColors.blue],
+          colors: isConnected
+              ? (isDarkMode 
+                  ? [AppColors.blue, Color(0xFF1E3A5F)]
+                  : [AppColors.blue, AppColors.darkBlue])
+              : (isDarkMode
+                  ? [Color(0xFF2D3748), Color(0xFF1A202C)]
+                  : [Color(0xFF64748B), Color(0xFF334155)]),
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.blackTransparent.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: (isConnected ? AppColors.blue : AppColors.blackTransparent)
+                .withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: ClipRRect(
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            // Background pattern
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            if (isConnected) {
+              context.go('/device/${device.deviceId}');
+            } else {
+              context.go('/connect_device');
+            }
+          },
+          splashColor: AppColors.white.withValues(alpha: 0.1),
+          highlightColor: Colors.transparent,
+          child: Stack(
+            children: [
+              // Decorative elements
+              Positioned(
+                right: -45,
+                top: -10,
+                child: Opacity(
+                  opacity: 0.08,
+                  child: Icon(
+                    Icons.directions_car_outlined,
+                    size: 120,
+                    color: AppColors.white,
+                  ),
                 ),
               ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header with title and menu
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          device.deviceName,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge?.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w600,
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(18.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row with connection status
+                    Row(
+                      children: [
+                        // Status icon pulsing if connected
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isConnected ? Colors.green : Colors.orange,
+                            boxShadow: isConnected ? [
+                              BoxShadow(
+                                color: Colors.green.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              )
+                            ] : null,
                           ),
                         ),
-                      ),
-                      PopupMenuButton(
-                        icon: const Icon(
-                          Icons.more_vert,
-                          color: AppColors.white,
+                        const SizedBox(width: 8),
+                        Text(
+                          isConnected ? 'CONNECTED' : 'DISCONNECTED',
+                          style: TextStyle(
+                            color: AppColors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                        color:
-                            isDarkMode ? AppColors.darkGrey : AppColors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            _showEditDeviceDialog(
-                              context,
-                              device,
-                              viewModel,
-                              isDarkMode,
-                            );
-                          } else if (value == 'remove') {
-                            _showRemoveDeviceDialog(
-                              context,
-                              device,
-                              viewModel,
-                              isDarkMode,
-                            );
-                          }
-                        },
-                        itemBuilder:
-                            (context) => [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.edit_outlined,
-                                      size: 18,
+                        const Spacer(),
+                        PopupMenuButton(
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: AppColors.white,
+                          ),
+                          color: isDarkMode ? AppColors.darkGrey : AppColors.white,
+                          elevation: 3,
+                          position: PopupMenuPosition.under,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _showEditDeviceDialog(
+                                context, device, viewModel, isDarkMode,
+                              );
+                            } else if (value == 'remove') {
+                              _showRemoveDeviceDialog(
+                                context, device, viewModel, isDarkMode,
+                              );
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color:
+                                        isDarkMode
+                                            ? AppColors.white
+                                            : AppColors.darkBlue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Edit Name',
+                                    style: TextStyle(
                                       color:
                                           isDarkMode
                                               ? AppColors.white
                                               : AppColors.darkBlue,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Edit Name',
-                                      style: TextStyle(
-                                        color:
-                                            isDarkMode
-                                                ? AppColors.white
-                                                : AppColors.darkBlue,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              PopupMenuItem(
-                                value: 'remove',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      size: 18,
-                                      color: Colors.red,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Remove Device',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ],
+                            ),
+                            PopupMenuItem(
+                              value: 'remove',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Remove Device',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 14),
+                    
+                    // Device name and model section
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.videocam,
+                            color: AppColors.white,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                device.deviceName,
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'DriveSense Camera',
+                                style: TextStyle(
+                                  color: AppColors.white.withValues(alpha: 0.7),
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
-                      ),
-                    ],
-                  ),
-
-                  // Status indicator
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            // Check if device SSID matches current WiFi
-                            color:
-                                viewModel.currentWifiSSID == device.deviceSSID
-                                    ? Colors.green
-                                    : Colors.orange,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          viewModel.currentWifiSSID == device.deviceSSID
-                              ? 'Connected'
-                              : 'Not Connected',
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Bottom section with icon and actions
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.directions_car,
-                        color: AppColors.white,
-                        size: 34,
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Bottom info section
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, 
+                        vertical: 10,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'SSID: ${device.deviceSSID}',
-                          style: TextStyle(
-                            color: AppColors.white.withValues(alpha: 0.8),
-                            fontSize: 13,
-                          ),
-                        ),
+                      decoration: BoxDecoration(
+                        color: AppColors.blackTransparent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Connect/Disconnect Button
-                      ElevatedButton(
-                        onPressed: () {
-                          if (viewModel.currentWifiSSID == device.deviceSSID) {
-                            viewModel.disconnectFromWifi().then((success) {
-                              if (success) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Disconnected from device')),
-                                );
-                              }
-                            });
-                          } else {
-                            context.go('/connect_device/?deviceId=${device.deviceId}');
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: viewModel.currentWifiSSID == device.deviceSSID 
-                              ? Colors.red.withValues(alpha: 0.8) 
-                              : AppColors.white,
-                          foregroundColor: viewModel.currentWifiSSID == device.deviceSSID 
-                              ? AppColors.white 
-                              : AppColors.darkBlue,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: Text(viewModel.currentWifiSSID == device.deviceSSID 
-                            ? 'Disconnect' 
-                            : 'Connect'),
-                      ),
-                      
-                      const SizedBox(width: 8),
-                      
-                      // Monitor Button (only shown when connected)
-                      if (viewModel.currentWifiSSID == device.deviceSSID)
-                        ElevatedButton(
-                          onPressed: () => context.go('/device/${device.deviceId}'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                      child: Row(
+                        children: [
+                          // SSID info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DEVICE ID',
+                                  style: TextStyle(
+                                    color: AppColors.white.withValues(alpha: 0.6),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  device.deviceSSID,
+                                  style: TextStyle(
+                                    color: AppColors.white.withValues(alpha: 0.9),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
-                          child: const Text('Monitor'),
-                        ),
-                    ],
-                  ),
-                ],
+                          
+                          // Action button
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14, 
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isConnected 
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : AppColors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isConnected ? Icons.monitor : Icons.wifi,
+                                  color: AppColors.white,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isConnected ? 'MONITOR' : 'CONNECT',
+                                  style: TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

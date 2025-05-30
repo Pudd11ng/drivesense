@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'routes.dart';
+import 'package:drivesense/utils/auth_service.dart';
 import 'package:drivesense/ui/user_management/registration/register_view.dart';
 import 'package:drivesense/ui/user_management/login/login_view.dart';
 import 'package:drivesense/ui/user_management/home/home_view.dart';
@@ -14,8 +15,34 @@ import 'package:drivesense/ui/monitoring_detection/device/device_view.dart';
 import 'package:drivesense/ui/user_management/profile/profile_completion_view.dart';
 import 'package:drivesense/ui/user_management/profile/profile_view.dart';
 
+// Create a custom GoRouter observer
+class GoRouterObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    debugPrint('New route pushed: ${route.settings.name}');
+  }
+}
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final AuthService _authService = AuthService();
+
 final GoRouter router = GoRouter(
-  initialLocation: '/login',
+  navigatorKey: _rootNavigatorKey,
+  initialLocation: Routes.home,
+  observers: [GoRouterObserver()],
+  redirect: (BuildContext context, GoRouterState state) async {
+    final isAuth = await _authService.isAuthenticated();
+    final publicPaths = [Routes.login, Routes.register];
+    final isGoingToPublicRoute = publicPaths.contains(state.path);
+    
+    if (!isAuth && !isGoingToPublicRoute) {
+      return Routes.login;
+    } else if (isAuth && isGoingToPublicRoute) {
+      return Routes.home;
+    }
+    return null;
+  },
+  
   routes: [
     GoRoute(path: Routes.login, builder: (context, state) => LoginView()),
     GoRoute(path: Routes.register, builder: (context, state) => RegisterView()),

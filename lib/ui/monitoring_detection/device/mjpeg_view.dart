@@ -6,20 +6,43 @@ import 'package:http/http.dart' as http;
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:ultralytics_yolo/yolo.dart';
+import 'package:provider/provider.dart';
+import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart'; // Adjust the import based on your project structure
 
 class MJPEGView extends StatefulWidget {
   final String streamUrl;
   final bool showLiveIcon;
-
+  final MJPEGController? controller; // Add controller
 
   const MJPEGView({
     super.key,
     required this.streamUrl,
-    this.showLiveIcon = false,
+    this.showLiveIcon =
+        false, // Show live indicator by default but I don't really need it you can turn it on if you want
+    this.controller,
   });
 
   @override
   State<MJPEGView> createState() => _MJPEGViewState();
+}
+
+// Add this controller class above the MJPEGView class
+class MJPEGController {
+  _MJPEGViewState? _state;
+
+  void _setState(State state) {
+    _state = state as _MJPEGViewState;
+  }
+
+  bool get isStreaming => _state?._streamController != null;
+
+  void startStream() {
+    _state?._startStream();
+  }
+
+  void stopStream() {
+    _state?._stopStream();
+  }
 }
 
 class _MJPEGViewState extends State<MJPEGView> {
@@ -36,19 +59,25 @@ class _MJPEGViewState extends State<MJPEGView> {
   YOLO? _yolo;
   List<YOLOResult> _yoloResults = [];
   bool _yoloInitialized = false;
-  // int _frameCounter = 0;
+  // int _frameCounter = 0;         // Uncomment if you want to limit YOLO processing frequency
 
   @override
   void initState() {
     super.initState();
+    if (widget.controller != null) {
+      widget.controller!._setState(this);
+    }
     _initializeYolo();
     _startStream();
   }
 
   Future<void> _initializeYolo() async {
     try {
-      // Initialize with a smaller model for better performance
-      _yolo = YOLO(modelPath: 'dangerous_driving_behaviours', task: YOLOTask.detect);
+      // Initialize with a YOLO model
+      _yolo = YOLO(
+        modelPath: 'dangerous_driving_behaviours',
+        task: YOLOTask.detect,
+      ); // Ensure the model path matches your assets and our task is to detect objects
       final loaded = await _yolo!.loadModel();
       if (loaded) {
         setState(() {
@@ -65,6 +94,16 @@ class _MJPEGViewState extends State<MJPEGView> {
 
   @override
   void dispose() {
+    if (mounted) {
+      final viewModel = Provider.of<MonitoringViewModel>(
+        context,
+        listen: false,
+      );
+      if (viewModel.isMonitoring) {
+        viewModel.stopMonitoring();
+        debugPrint('Monitoring stopped on dispose');
+      }
+    }
     _stopStream();
     _yolo = null; // YOLO has no explicit dispose method
     super.dispose();
@@ -72,6 +111,7 @@ class _MJPEGViewState extends State<MJPEGView> {
 
   @override
   void didUpdateWidget(MJPEGView oldWidget) {
+    // Check if the stream URL has changed
     super.didUpdateWidget(oldWidget);
     if (oldWidget.streamUrl != widget.streamUrl) {
       _restartStream();
@@ -91,6 +131,9 @@ class _MJPEGViewState extends State<MJPEGView> {
       final stream = response.stream;
       final completer = Completer<void>();
 
+      // Variables to track if monitoring has been started
+      bool monitoringStarted = false;
+
       // Process the multipart MJPEG stream
       List<int> buffer = [];
       int boundaryIndex = -1;
@@ -99,8 +142,17 @@ class _MJPEGViewState extends State<MJPEGView> {
         option: FaceMeshDetectorOptions.faceMesh,
       );
 
+      print('Starting MJPEG stream from ${widget.streamUrl}');
+
       stream.listen(
         (List<int> chunk) async {
+          // First check if widget is still mounted before processing
+          if (!mounted ||
+              _streamController == null ||
+              _streamController!.isClosed) {
+            return;
+          }
+
           buffer.addAll(chunk);
 
           if (boundaryIndex < 0) {
@@ -143,22 +195,37 @@ class _MJPEGViewState extends State<MJPEGView> {
                   buffer.sublist(frameStart, frameEnd),
                 );
 
+                // Start monitoring on first frame if not already started
+                if (!monitoringStarted) {
+                  final viewModel = Provider.of<MonitoringViewModel>(
+                    context,
+                    listen: false,
+                  );
+                  if (!viewModel.isMonitoring) {
+                    viewModel.startMonitoring();
+                    monitoringStarted = true;
+                    debugPrint('Monitoring started automatically with stream');
+                  }
+                }
+                print(frameBytes);
+
                 // Process with face detection first, then YOLO
                 if (!_isProcessing) {
+                  print('Processing frame with face mesh detection');
                   _processImage(frameBytes, meshDetector).then((_) {
                     // Only run YOLO if face was detected (driver present)
-                    if (_faceMeshes.isNotEmpty && _yoloInitialized 
-                    // && _frameCounter % 5 == 0
+                    if (_faceMeshes.isNotEmpty && _yoloInitialized
+                    // && _frameCounter % 5 == 0    // Uncomment if you want to limit YOLO processing frequency
                     ) {
                       _processWithYolo(frameBytes);
                     }
                   });
                 }
-                
-                // _frameCounter++;
+
+                // _frameCounter++; // Increment frame counter if you want to limit YOLO processing frequency
 
                 // Add to stream for display
-                if (!_streamController!.isClosed) {
+                if (mounted && !_streamController!.isClosed) {
                   _streamController!.add(frameBytes);
                 }
 
@@ -188,13 +255,37 @@ class _MJPEGViewState extends State<MJPEGView> {
   }
 
   void _stopStream() {
+    // Stop monitoring if it's active
+    if (mounted) {
+      final viewModel = Provider.of<MonitoringViewModel>(
+        context,
+        listen: false,
+      );
+      if (viewModel.isMonitoring) {
+        viewModel.stopMonitoring();
+      }
+    }
+
+    // Close the HTTP client first
     _httpClient?.close();
     _httpClient = null;
-    _streamController?.close();
-    _streamController = null;
+
+    // Then safely close the stream controller
+    if (_streamController != null) {
+      if (!_streamController!.isClosed) {
+        // Add a try-catch as a safety measure
+        try {
+          _streamController!.close();
+        } catch (e) {
+          debugPrint('Error closing stream controller: $e');
+        }
+      }
+      _streamController = null;
+    }
   }
 
   void _restartStream() {
+    // Restart the stream if the URL has changed but in this case we don't need it
     _stopStream();
     _startStream();
   }
@@ -227,10 +318,12 @@ class _MJPEGViewState extends State<MJPEGView> {
           bytesPerRow: image.width, // For NV21, bytesPerRow = width
         ),
       );
+      print('Input image created with size: $_imageSize');
 
       // Process image
       final meshes = await detector.processImage(_inputImage!);
 
+      // When calling setState at the end, wrap in mounted check
       if (mounted) {
         setState(() {
           _faceMeshes = meshes;
@@ -240,6 +333,7 @@ class _MJPEGViewState extends State<MJPEGView> {
       debugPrint('Error processing face mesh: $e');
       debugPrint('Stack trace: $stackTrace');
     } finally {
+      // Safe to update this flag even if unmounted
       _isProcessing = false;
     }
   }
@@ -298,25 +392,31 @@ class _MJPEGViewState extends State<MJPEGView> {
     try {
       // Run YOLO inference on the frame
       final results = await _yolo!.predict(frameBytes);
-      
-      print('Raw YOLO results: $results'); // Print the raw results
-      
+      print('Raw YOLO results: $results');
+
+      // Update state only if still mounted
       if (mounted && results.containsKey('boxes')) {
         final boxes = results['boxes'] as List;
-        print('Raw boxes count: ${boxes.length}'); // Check count before processing
-        
+        print(
+          'Raw boxes count: ${boxes.length}',
+        ); // Check count before processing
+
         if (boxes.isNotEmpty) {
           print('First box: ${boxes.first}');
-          
-          final typedResults = boxes.map((box) => 
-            convertToYoloResult(box as Map<String, dynamic>)
-          ).toList();
-          
+
+          final typedResults =
+              boxes
+                  .map(
+                    (box) => convertToYoloResult(box as Map<String, dynamic>),
+                  )
+                  .toList();
+
           setState(() {
             _yoloResults = typedResults;
           });
 
-          print('YOLO detections: ${_yoloResults.length}');
+          // Report detected behaviors
+          _reportDetectedBehaviors(typedResults);
         } else {
           // Clear previous results when no objects are detected
           setState(() {
@@ -325,10 +425,74 @@ class _MJPEGViewState extends State<MJPEGView> {
           print('No objects detected in this frame');
         }
       } else {
-        print('No boxes key in results: ${results.keys}'); // See what keys are available
+        print(
+          'No boxes key in results: ${results.keys}',
+        ); // See what keys are available
       }
     } catch (e) {
       debugPrint('Error running YOLO detection: $e');
+    }
+  }
+
+  // In MJPEGView class:
+
+  // Add this method to report behaviors
+  void _reportDetectedBehaviors(List<YOLOResult> detections) {
+    if (!mounted) return;
+
+    // Get the view model from the context
+    final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
+
+    // Only process high-confidence detections (adjust threshold as needed)
+    final highConfidenceDetections =
+        detections.where((detection) => detection.confidence >= 0.5).toList();
+
+    for (final detection in highConfidenceDetections) {
+      // Map YOLO class to behavior type
+      String behaviourType;
+      String alertName;
+
+      switch (detection.className) {
+        case 'drowsy':
+          behaviourType = 'DROWSINESS';
+          alertName = 'Default';
+          break;
+        case 'phone':
+          behaviourType = 'PHONE USAGE';
+          alertName = 'Default';
+          break;
+        case 'yawn':
+          behaviourType = 'DROWSINESS';
+          alertName = 'Default';
+          break;
+        case 'Bloodshot eyes':
+          behaviourType = 'INTOXICATION';
+          alertName = 'Default';
+          break;
+        case 'Droopy eyelids':
+          behaviourType = 'INTOXICATION';
+          alertName = 'Default';
+          break;
+        case 'Flushed skin':
+          behaviourType = 'INTOXICATION';
+          alertName = 'Default';
+          break;
+        case 'distraction':
+          behaviourType = 'DISTRACTION';
+          alertName = 'Default';
+          break;
+        default:
+          // If unrecognized, use the class name directly
+          behaviourType = detection.className.toUpperCase();
+          alertName = '${detection.className} detected';
+      }
+
+      // Report to backend via MonitoringViewModel
+      viewModel.addBehaviour(
+        behaviourType: behaviourType,
+        alertTypeName: alertName,
+        detectedTime: DateTime.now(),
+      );
     }
   }
 
@@ -338,35 +502,52 @@ class _MJPEGViewState extends State<MJPEGView> {
     final y1 = box['y1'] as double;
     final x2 = box['x2'] as double;
     final y2 = box['y2'] as double;
-    
+
     // Create bounding boxes
     final boundingBox = Rect.fromLTRB(x1, y1, x2, y2);
     final normalizedBox = Rect.fromLTRB(
-      x1 / _imageSize.width, 
+      x1 / _imageSize.width,
       y1 / _imageSize.height,
-      x2 / _imageSize.width, 
-      y2 / _imageSize.height
+      x2 / _imageSize.width,
+      y2 / _imageSize.height,
     );
-    
+
     // Get class and confidence
     final className = box['class'] as String;
     final confidence = box['confidence'] as double;
-    
+
     // Map class names to indices based on your model's class list
     int classIndex;
     switch (className) {
-      case 'Bloodshot eyes': classIndex = 0; break;
-      case 'Droopy eyelids': classIndex = 1; break;
-      case 'Flushed skin': classIndex = 2; break;
-      case 'awake': classIndex = 3; break;
-      case 'distraction': classIndex = 4; break;
-      case 'drowsy': classIndex = 5; break;
-      case 'phone': classIndex = 6; break;
-      case 'yawn': classIndex = 7; break;
-      default: classIndex = 99; // unknown
+      case 'Bloodshot eyes':
+        classIndex = 0;
+        break;
+      case 'Droopy eyelids':
+        classIndex = 1;
+        break;
+      case 'Flushed skin':
+        classIndex = 2;
+        break;
+      case 'awake':
+        classIndex = 3;
+        break;
+      case 'distraction':
+        classIndex = 4;
+        break;
+      case 'drowsy':
+        classIndex = 5;
+        break;
+      case 'phone':
+        classIndex = 6;
+        break;
+      case 'yawn':
+        classIndex = 7;
+        break;
+      default:
+        classIndex = 99; // unknown
     }
-    
-    return YOLOResult.new(
+
+    return YOLOResult(
       classIndex: classIndex,
       className: className,
       confidence: confidence,
@@ -481,42 +662,6 @@ class _MJPEGViewState extends State<MJPEGView> {
             ),
           ),
         ),
-
-        // Live indicator
-        if (widget.showLiveIcon)
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -616,9 +761,10 @@ class YoloPainter extends CustomPainter {
     final double offsetY = (size.height - imageSize.height * scale) / 2;
 
     // Paint for bounding boxes
-    final boxPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+    final boxPaint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
 
     // Text style for labels
     final textStyle = TextStyle(
@@ -629,11 +775,11 @@ class YoloPainter extends CustomPainter {
 
     for (final detection in detections) {
       // Get detection details using proper accessors
-      final boundingBox = detection.boundingBox;  // Changed from box to boundingBox
-      final confidence = detection.confidence;    // This was already correct
-      final classIndex = detection.classIndex;    // Changed from classId to classIndex
-      final className = detection.className;      // This was already correct
-      
+      final boundingBox = detection.boundingBox;
+      final confidence = detection.confidence;
+      final classIndex = detection.classIndex;
+      final className = detection.className;
+
       // Skip low confidence detections
       if (confidence < 0.5) continue;
 
@@ -644,14 +790,14 @@ class YoloPainter extends CustomPainter {
       final bottom = offsetY + boundingBox.bottom * scale;
 
       final rect = Rect.fromLTRB(left, top, right, bottom);
-      
+
       // Assign different colors based on class index for better visualization
       final color = Colors.primaries[classIndex % Colors.primaries.length];
       boxPaint.color = color;
-      
+
       // Draw bounding box
       canvas.drawRect(rect, boxPaint);
-      
+
       // Prepare label text
       final labelText = '$className ${(confidence * 100).toStringAsFixed(0)}%';
       final textSpan = TextSpan(text: labelText, style: textStyle);
@@ -660,13 +806,18 @@ class YoloPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      
+
       // Draw label background
       canvas.drawRect(
-        Rect.fromLTWH(left, top - textPainter.height - 4, textPainter.width + 8, textPainter.height + 4),
+        Rect.fromLTWH(
+          left,
+          top - textPainter.height - 4,
+          textPainter.width + 8,
+          textPainter.height + 4,
+        ),
         Paint()..color = color,
       );
-      
+
       // Draw label text
       textPainter.paint(canvas, Offset(left + 4, top - textPainter.height - 2));
     }

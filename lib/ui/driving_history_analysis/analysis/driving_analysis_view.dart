@@ -27,7 +27,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this); // Changed to 2 tabs
   }
 
   @override
@@ -53,7 +53,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           return Scaffold(
             appBar: AppHeaderBar(
               title: 'Driving Analysis',
-              leading: Icon(Icons.arrow_back),
+              leading: const Icon(Icons.arrow_back),
               onLeadingPressed: () => context.pop(),
             ),
             body: Center(
@@ -70,7 +70,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           backgroundColor: backgroundColor,
           appBar: AppHeaderBar(
             title: 'Driving Analysis',
-            leading: Icon(Icons.arrow_back),
+            leading: const Icon(Icons.arrow_back),
             onLeadingPressed: () => context.pop(),
             actions: [
               IconButton(
@@ -78,7 +78,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Sharing not implemented'),
+                      content: const Text('Sharing not implemented'),
                       backgroundColor: accentColor,
                     ),
                   );
@@ -89,25 +89,76 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDrivingSummary(context, drivingHistory, viewModel, isDarkMode),
-              TabBar(
-                controller: _tabController,
-                labelColor: accentColor,
-                unselectedLabelColor: isDarkMode ? AppColors.greyBlue : AppColors.grey,
-                indicatorColor: accentColor,
-                tabs: const [
-                  Tab(text: 'OVERVIEW'),
-                  Tab(text: 'TIMELINE'),
-                  Tab(text: 'STATS'),
-                ],
+              _buildDrivingSummary(
+                context,
+                drivingHistory,
+                viewModel,
+                isDarkMode,
+              ),
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  color: isDarkMode ? AppColors.black : AppColors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.blackTransparent.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: accentColor,
+                  unselectedLabelColor:
+                      isDarkMode ? AppColors.greyBlue : AppColors.grey,
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  indicator: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: accentColor, width: 3.0),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  tabs: [
+                    Tab(
+                      height: 56,
+                      icon: Icon(Icons.dashboard_outlined, size: 20),
+                      text: 'OVERVIEW',
+                      iconMargin: const EdgeInsets.only(bottom: 4),
+                    ),
+                    Tab(
+                      height: 56,
+                      icon: Icon(Icons.timeline_outlined, size: 20),
+                      text: 'TIMELINE',
+                      iconMargin: const EdgeInsets.only(bottom: 4),
+                    ),
+                  ],
+                ),
               ),
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildOverviewTab(context, drivingHistory, viewModel, isDarkMode),
-                    _buildTimelineTab(context, drivingHistory, viewModel, isDarkMode),
-                    _buildStatsTab(context, drivingHistory, viewModel, isDarkMode),
+                    _buildOverviewTab(
+                      context,
+                      drivingHistory,
+                      viewModel,
+                      isDarkMode,
+                    ),
+                    _buildTimelineTab(
+                      context,
+                      drivingHistory,
+                      viewModel,
+                      isDarkMode,
+                    ),
                   ],
                 ),
               ),
@@ -127,117 +178,318 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     AnalysisViewModel viewModel,
     bool isDarkMode,
   ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [AppColors.darkBlue, AppColors.blue.withValues(alpha: 0.8)]
-              : [AppColors.darkBlue, AppColors.blue],
+    return Card(
+      margin: const EdgeInsets.all(16),
+      elevation: isDarkMode ? 4 : 6,
+      shadowColor: AppColors.blackTransparent.withValues(alpha: 0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
+                isDarkMode
+                    ? [
+                      AppColors.darkBlue,
+                      AppColors.blue.withValues(alpha: 0.7),
+                    ]
+                    : [AppColors.darkBlue, AppColors.blue],
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.blackTransparent.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            viewModel.formatDate(history.startTime),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.bold,
+        child: Stack(
+          children: [
+            // Decorative elements
+            Positioned(
+              top: -30,
+              right: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.access_time, color: AppColors.white, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '${viewModel.formatTime(history.startTime)} - ${viewModel.formatTime(history.endTime)}',
-                style: TextStyle(color: AppColors.white.withValues(alpha: 0.9)),
               ),
-              const SizedBox(width: 16),
-              const Icon(Icons.timer, color: AppColors.white, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                viewModel.getFormattedDuration(history),
-                style: TextStyle(color: AppColors.white.withValues(alpha: 0.9)),
+            ),
+            Positioned(
+              bottom: -40,
+              left: 30,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildSummaryItem(
-                context,
-                '${history.riskyBehaviour.length}',
-                'Alerts',
-                Icons.warning_amber,
-                Colors.amber,
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        viewModel.formatDate(history.startTime),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Start',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    viewModel.formatTime(history.startTime),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          height: 30,
+                          width: 1,
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.timer_outlined,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Duration',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    viewModel.getFormattedDuration(history),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          height: 30,
+                          width: 1,
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              const Icon(
+                                Icons.flag_outlined,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'End',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    viewModel.formatTime(history.endTime),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildEnhancedSummaryItem(
+                          context,
+                          '${history.riskyBehaviour.length}',
+                          'Risk Alerts',
+                          Icons.warning_amber,
+                          Colors.amber,
+                          history.riskyBehaviour.isNotEmpty,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildEnhancedSummaryItem(
+                          context,
+                          '${history.accident.length}',
+                          'Accidents',
+                          Icons.car_crash,
+                          Colors.redAccent,
+                          history.accident.isNotEmpty,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              _buildSummaryItem(
-                context,
-                '${history.accident.length}',
-                'Accidents',
-                Icons.car_crash,
-                Colors.red,
-              ),
-              _buildSummaryItem(
-                context,
-                viewModel.calculateRiskScore(history).toString(),
-                'Risk Score',
-                Icons.speed,
-                Colors.green,
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSummaryItem(
+  Widget _buildEnhancedSummaryItem(
     BuildContext context,
     String value,
     String label,
     IconData icon,
     Color iconColor,
+    bool hasItems,
   ) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color:
+            hasItems
+                ? iconColor.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              hasItems
+                  ? iconColor.withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.08),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color:
+                  hasItems
+                      ? iconColor.withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
-          child: Icon(icon, color: iconColor, size: 24),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.white,
-                fontWeight: FontWeight.bold,
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.white.withValues(alpha: 0.9),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
               ),
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -247,193 +499,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     AnalysisViewModel viewModel,
     bool isDarkMode,
   ) {
-    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
     final textColor = isDarkMode ? AppColors.white : AppColors.black;
-    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('Risk Analysis', accentColor, textColor),
-          Card(
-            color: cardColor,
-            elevation: isDarkMode ? 0 : 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: isDarkMode
-                  ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
-                  : BorderSide.none,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildRiskChart(history, textColor, isDarkMode),
-                  const SizedBox(height: 16),
-                  Text(
-                    viewModel.getRiskAnalysis(history),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: textColor,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          if (history.riskyBehaviour.isNotEmpty) ...[
-            _buildSectionHeader('Risk Alerts', accentColor, textColor),
-            _buildRiskyBehaviorOverview(history.riskyBehaviour, context, isDarkMode),
-          ],
-
-          if (history.accident.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildSectionHeader('Accident Details', accentColor, textColor),
-            _buildAccidentOverview(history.accident, context, isDarkMode),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimelineTab(
-    BuildContext context,
-    DrivingHistory history,
-    AnalysisViewModel viewModel,
-    bool isDarkMode,
-  ) {
-    final textColor = isDarkMode ? AppColors.white : AppColors.black;
-    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
-
-    // Combine accidents and risky behaviors into a single timeline
-    final events = <Map<String, dynamic>>[];
-
-    for (var behavior in history.riskyBehaviour) {
-      events.add({
-        'time': behavior.delectedTime,
-        'type': 'behavior',
-        'data': behavior,
-      });
-    }
-
-    for (var accident in history.accident) {
-      events.add({
-        'time': accident.delectedTime,
-        'type': 'accident',
-        'data': accident,
-      });
-    }
-
-    // Sort events by time
-    events.sort(
-      (a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime),
-    );
-
-    return events.isEmpty
-        ? Center(
-            child: Text(
-              'No events recorded for this drive',
-              style: TextStyle(color: textColor),
-            ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: events.length,
-            itemBuilder: (context, index) {
-              final event = events[index];
-              final time = event['time'] as DateTime;
-              final type = event['type'] as String;
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: type == 'accident' ? Colors.red : Colors.amber,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            type == 'accident' ? Icons.car_crash : Icons.warning,
-                            color: AppColors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                      if (index != events.length - 1)
-                        Container(
-                          width: 2,
-                          height: 50,
-                          color: isDarkMode
-                              ? AppColors.greyBlue.withValues(alpha: 0.3)
-                              : AppColors.grey.withValues(alpha: 0.3),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('h:mm a').format(time),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: type == 'accident' ? Colors.red : textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Card(
-                          elevation: isDarkMode ? 0 : 1,
-                          color: cardColor,
-                          margin: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: isDarkMode
-                                ? BorderSide(
-                                    color: AppColors.greyBlue.withValues(alpha: 0.2),
-                                  )
-                                : BorderSide.none,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: type == 'accident'
-                                ? _buildAccidentTimelineItem(
-                                    event['data'] as Accident,
-                                    textColor,
-                                  )
-                                : _buildRiskyBehaviorTimelineItem(
-                                    event['data'] as RiskyBehaviour,
-                                    textColor,
-                                    context,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-  }
-
-  Widget _buildStatsTab(
-    BuildContext context,
-    DrivingHistory history,
-    AnalysisViewModel viewModel,
-    bool isDarkMode,
-  ) {
-    final textColor = isDarkMode ? AppColors.white : AppColors.black;
-    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
+    final cardColor =
+        isDarkMode
+            ? AppColors.darkGrey.withValues(alpha: 0.3)
+            : AppColors.white;
     final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
     final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
 
@@ -466,69 +536,19 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (behaviorTypeCounts.isNotEmpty) ...[
-            _buildSectionHeader('Risk Behavior Distribution', accentColor, textColor),
-            SizedBox(
-              height: 300,
-              child: PieChart(
-                PieChartData(
-                  sections: pieChartData,
-                  centerSpaceRadius: 40,
-                  sectionsSpace: 2,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Legend
-            ...behaviorTypeCounts.entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: _getBehaviorTypeColor(entry.key, isDarkMode),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${entry.key}: ${entry.value}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: textColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ] else
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  'No risk behaviors detected during this drive',
-                  style: TextStyle(color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-
-          const SizedBox(height: 24),
-
           _buildSectionHeader('Session Metrics', accentColor, textColor),
           Card(
             elevation: isDarkMode ? 0 : 2,
             color: cardColor,
+            margin: const EdgeInsets.only(bottom: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: isDarkMode
-                  ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
-                  : BorderSide.none,
+              side:
+                  isDarkMode
+                      ? BorderSide(
+                        color: AppColors.greyBlue.withValues(alpha: 0.2),
+                      )
+                      : BorderSide.none,
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -553,12 +573,6 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                     secondaryTextColor,
                   ),
                   _buildMetricRow(
-                    'Risk Score',
-                    viewModel.calculateRiskScore(history).toString(),
-                    textColor,
-                    secondaryTextColor,
-                  ),
-                  _buildMetricRow(
                     'Start Time',
                     viewModel.formatTime(history.startTime),
                     textColor,
@@ -574,8 +588,583 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
               ),
             ),
           ),
+
+          // Behavior Distribution Chart
+          if (behaviorTypeCounts.isNotEmpty) ...[
+            _buildSectionHeader(
+              'Risk Behavior Distribution',
+              accentColor,
+              textColor,
+            ),
+            Card(
+              elevation: isDarkMode ? 0 : 2,
+              color: cardColor,
+              margin: const EdgeInsets.only(bottom: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side:
+                    isDarkMode
+                        ? BorderSide(
+                          color: AppColors.greyBlue.withValues(alpha: 0.2),
+                        )
+                        : BorderSide.none,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 250,
+                      child: PieChart(
+                        PieChartData(
+                          sections: pieChartData,
+                          centerSpaceRadius: 40,
+                          sectionsSpace: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Legend
+                    ...behaviorTypeCounts.entries.map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: _getBehaviorTypeColor(
+                                  entry.key,
+                                  isDarkMode,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${entry.key}: ${entry.value}',
+                              style: TextStyle(fontSize: 14, color: textColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          // Accidents List
+          if (history.accident.isNotEmpty) ...[
+            _buildSectionHeader('Accident Details', accentColor, textColor),
+            Card(
+              elevation: isDarkMode ? 0 : 2,
+              color: cardColor,
+              margin: const EdgeInsets.only(bottom: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side:
+                    isDarkMode
+                        ? BorderSide(
+                          color: AppColors.greyBlue.withValues(alpha: 0.2),
+                        )
+                        : BorderSide.none,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children:
+                      history.accident.map((accident) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.car_crash,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Accident at ${accident.location}',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat(
+                                        'h:mm a',
+                                      ).format(accident.detectedTime),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: secondaryTextColor),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Emergency Contact: ${accident.contactNum}',
+                                      style: TextStyle(color: textColor),
+                                    ),
+                                    Text(
+                                      'Response Time: ${accident.contactTime}',
+                                      style: TextStyle(color: textColor),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildTimelineTab(
+    BuildContext context,
+    DrivingHistory history,
+    AnalysisViewModel viewModel,
+    bool isDarkMode,
+  ) {
+    final textColor = isDarkMode ? AppColors.white : AppColors.black;
+    final cardColor =
+        isDarkMode
+            ? AppColors.darkGrey.withValues(alpha: 0.3)
+            : AppColors.white;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+
+    final events = <Map<String, dynamic>>[];
+
+    for (var behavior in history.riskyBehaviour) {
+      events.add({
+        'time': behavior.detectedTime,
+        'type': 'behavior',
+        'data': behavior,
+      });
+    }
+
+    for (var accident in history.accident) {
+      events.add({
+        'time': accident.detectedTime,
+        'type': 'accident',
+        'data': accident,
+      });
+    }
+
+    events.sort(
+      (a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('Timeline Graph', accentColor, textColor),
+          _buildTimelineGraph(history, events, isDarkMode),
+
+          const SizedBox(height: 24),
+
+          _buildSectionHeader('Event Timeline', accentColor, textColor),
+          events.isEmpty
+              ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'No events recorded for this drive',
+                    style: TextStyle(color: textColor),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+              : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: events.length,
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final time = event['time'] as DateTime;
+                  final type = event['type'] as String;
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        children: [
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color:
+                                  type == 'accident'
+                                      ? Colors.red
+                                      : Colors.amber,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                type == 'accident'
+                                    ? Icons.car_crash
+                                    : Icons.warning,
+                                color: AppColors.white,
+                                size: 12,
+                              ),
+                            ),
+                          ),
+                          if (index != events.length - 1)
+                            Container(
+                              width: 2,
+                              height: 50,
+                              color:
+                                  isDarkMode
+                                      ? AppColors.greyBlue.withValues(
+                                        alpha: 0.3,
+                                      )
+                                      : AppColors.grey.withValues(alpha: 0.3),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('h:mm a').format(time),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    type == 'accident' ? Colors.red : textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Card(
+                              elevation: isDarkMode ? 0 : 1,
+                              color: cardColor,
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side:
+                                    isDarkMode
+                                        ? BorderSide(
+                                          color: AppColors.greyBlue.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        )
+                                        : BorderSide.none,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child:
+                                    type == 'accident'
+                                        ? _buildAccidentTimelineItem(
+                                          event['data'] as Accident,
+                                          textColor,
+                                        )
+                                        : _buildRiskyBehaviorTimelineItem(
+                                          event['data'] as RiskyBehaviour,
+                                          textColor,
+                                          context,
+                                        ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineGraph(
+    DrivingHistory history,
+    List<Map<String, dynamic>> events,
+    bool isDarkMode,
+  ) {
+    final cardColor = isDarkMode 
+        ? AppColors.darkGrey.withValues(alpha: 0.3) 
+        : AppColors.white;
+    final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
+    final gridColor = isDarkMode 
+        ? AppColors.greyBlue.withValues(alpha: 0.15)
+        : AppColors.grey.withValues(alpha: 0.15);
+    final labelColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
+
+    // Calculate total duration in minutes for the X axis
+    final totalDuration = history.endTime.difference(history.startTime).inMinutes;
+
+    if (totalDuration <= 0 || events.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Create reference times for the x-axis (actual times)
+    final startTimeInMinutes = 
+        history.startTime.hour * 60 + history.startTime.minute;
+    
+    // Group events by actual time and count occurrences
+    final Map<int, int> eventCountsByMinute = {};
+    int maxCount = 0;
+
+    for (var event in events) {
+      final eventTime = event['time'] as DateTime;
+      final eventAbsoluteMinute = eventTime.hour * 60 + eventTime.minute;
+      
+      // Increment count for this minute
+      eventCountsByMinute[eventAbsoluteMinute] = (eventCountsByMinute[eventAbsoluteMinute] ?? 0) + 1;
+      
+      // Track max count for Y-axis scaling
+      if (eventCountsByMinute[eventAbsoluteMinute]! > maxCount) {
+        maxCount = eventCountsByMinute[eventAbsoluteMinute]!;
+      }
+    }
+
+    // Create spots for the chart using actual time values (minutes from midnight)
+    final spots = eventCountsByMinute.entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.toDouble());
+    }).toList();
+    
+    // Sort by X value (time)
+    spots.sort((a, b) => a.x.compareTo(b.x));
+
+    // Calculate appropriate max Y value
+    final maxY = maxCount > 3 ? (maxCount + 1).toDouble() : 3.0;
+    
+    // Calculate min and max X values for the chart (in minutes from midnight)
+    final minX = (startTimeInMinutes - 5).toDouble(); // Start 5 min before first event
+    final maxX = (startTimeInMinutes + totalDuration + 5).toDouble(); // End 5 min after last event
+
+    return Card(
+      elevation: isDarkMode ? 0 : 2,
+      color: cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isDarkMode
+            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+            : BorderSide.none,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildTimelineLegendItem(
+                  'Risk Events',
+                  accentColor,
+                  isDarkMode,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 180,
+              child: LineChart(
+                LineChartData(
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((touchedSpot) {
+                          final minutesFromMidnight = touchedSpot.x.toInt();
+                          final count = touchedSpot.y.toInt();
+                          
+                          // Convert back to DateTime for display
+                          final hour = minutesFromMidnight ~/ 60;
+                          final minute = minutesFromMidnight % 60;
+                          final time = DateTime(
+                            history.startTime.year,
+                            history.startTime.month,
+                            history.startTime.day,
+                            hour,
+                            minute,
+                          );
+                          
+                          return LineTooltipItem(
+                            '${DateFormat('h:mm a').format(time)}: $count ${count == 1 ? 'event' : 'events'}',
+                            TextStyle(
+                              color: accentColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawHorizontalLine: true,
+                    drawVerticalLine: true,
+                    horizontalInterval: 1, // Every 1 count
+                    verticalInterval: 5, // Every 5 minutes
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(color: gridColor, strokeWidth: 1);
+                    },
+                    getDrawingVerticalLine: (value) {
+                      // Only draw lines at 5-minute intervals
+                      if (value % 5 == 0) {
+                        return FlLine(color: gridColor, strokeWidth: 1);
+                      }
+                      return FlLine(color: Colors.transparent);
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        getTitlesWidget: (value, meta) {
+                          // Only show integer values
+                          if (value % 1 != 0) return const SizedBox();
+                          
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Text(
+                              value.toInt().toString(),
+                              style: TextStyle(
+                                color: labelColor,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                        interval: 1,
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        getTitlesWidget: (value, meta) {
+                          // Only show at 5-minute intervals
+                          if (value % 5 != 0) return const SizedBox();
+                          
+                          final absoluteMinute = value.toInt();
+                          final hour = absoluteMinute ~/ 60;
+                          final minute = absoluteMinute % 60;
+                          
+                          // Create a datetime for formatting
+                          final time = DateTime(
+                            history.startTime.year,
+                            history.startTime.month,
+                            history.startTime.day,
+                            hour,
+                            minute,
+                          );
+                          
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Text(
+                              DateFormat('h:mm').format(time),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: labelColor,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(
+                      color: isDarkMode
+                          ? AppColors.greyBlue.withValues(alpha: 0.2)
+                          : AppColors.grey.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  minX: minX,
+                  maxX: maxX,
+                  minY: 0,
+                  maxY: maxY,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: accentColor,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 5,
+                            color: accentColor,
+                            strokeWidth: 2,
+                            strokeColor: isDarkMode ? Colors.black : Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: accentColor.withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineLegendItem(String label, Color color, bool isDarkMode) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode ? AppColors.greyBlue : AppColors.grey,
+          ),
+        ),
+      ],
     );
   }
 
@@ -585,219 +1174,8 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: accentColor,
-            ),
-      ),
-    );
-  }
-
-  Widget _buildRiskChart(DrivingHistory history, Color textColor, bool isDarkMode) {
-    return SizedBox(
-      height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            '${_calculateOverallRisk(history)}%',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-          ),
-          PieChart(
-            PieChartData(
-              startDegreeOffset: 270,
-              sections: [
-                PieChartSectionData(
-                  value: _calculateOverallRisk(history).toDouble(),
-                  color: _getRiskColor(
-                    _calculateOverallRisk(history).toDouble(),
-                    isDarkMode,
-                  ),
-                  radius: 20,
-                  showTitle: false,
-                ),
-                PieChartSectionData(
-                  value: 100 - _calculateOverallRisk(history).toDouble(),
-                  color: isDarkMode
-                      ? AppColors.greyBlue.withValues(alpha: 0.2)
-                      : Colors.grey.shade200,
-                  radius: 20,
-                  showTitle: false,
-                ),
-              ],
-              centerSpaceRadius: 80,
-              sectionsSpace: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _calculateOverallRisk(DrivingHistory history) {
-    // Calculate risk percentage based on alerts and duration
-    final durationMinutes =
-        history.endTime.difference(history.startTime).inMinutes;
-    if (durationMinutes == 0) return 0;
-
-    // More alerts in shorter time = higher risk
-    final alertsPerHour =
-        (history.riskyBehaviour.length * 60) / durationMinutes;
-
-    // Convert to percentage with max value capped
-    int riskPercentage = (alertsPerHour * 20).round();
-    if (history.accident.isNotEmpty) {
-      riskPercentage += 20; // Add 20% for each accident
-    }
-
-    return riskPercentage.clamp(0, 100);
-  }
-
-  Color _getRiskColor(double risk, bool isDarkMode) {
-    if (risk < 30) return isDarkMode ? Colors.green.shade400 : Colors.green;
-    if (risk < 70) return isDarkMode ? Colors.orange.shade300 : Colors.orange;
-    return isDarkMode ? Colors.red.shade300 : Colors.red;
-  }
-
-  Widget _buildRiskyBehaviorOverview(
-    List<RiskyBehaviour> behaviors,
-    BuildContext context,
-    bool isDarkMode,
-  ) {
-    final textColor = isDarkMode ? AppColors.white : AppColors.black;
-    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
-    final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
-
-    return Card(
-      elevation: isDarkMode ? 0 : 2,
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isDarkMode
-            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
-            : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children:
-              behaviors.map((behavior) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _getRiskyBehaviorIcon(behavior.behaviourType, isDarkMode),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              behavior.behaviourType,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
-                                  ),
-                            ),
-                            Text(
-                              DateFormat('h:mm a').format(behavior.delectedTime),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: secondaryTextColor,
-                                  ),
-                            ),
-                            Text(
-                              'Alert: ${behavior.alertTypeName}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: textColor,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAccidentOverview(
-    List<Accident> accidents,
-    BuildContext context,
-    bool isDarkMode,
-  ) {
-    final textColor = isDarkMode ? AppColors.white : AppColors.black;
-    final cardColor = isDarkMode ? AppColors.darkGrey.withValues(alpha: 0.3) : AppColors.white;
-    final secondaryTextColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
-
-    return Card(
-      elevation: isDarkMode ? 0 : 2,
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isDarkMode
-            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
-            : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children:
-              accidents.map((accident) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.car_crash, color: Colors.red),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Accident at ${accident.location}',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
-                                  ),
-                            ),
-                            Text(
-                              DateFormat('h:mm a').format(accident.delectedTime),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: secondaryTextColor,
-                                  ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Emergency Contact: ${accident.contactNum}',
-                              style: TextStyle(color: textColor),
-                            ),
-                            Text(
-                              'Response Time: ${accident.contactTime}',
-                              style: TextStyle(color: textColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          fontWeight: FontWeight.bold,
+          color: accentColor,
         ),
       ),
     );
@@ -811,7 +1189,10 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _getRiskyBehaviorIcon(behavior.behaviourType, Theme.of(context).brightness == Brightness.dark),
+        _getRiskyBehaviorIcon(
+          behavior.behaviourType,
+          Theme.of(context).brightness == Brightness.dark,
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -820,16 +1201,16 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
               Text(
                 behavior.behaviourType,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Alert Type: ${behavior.alertTypeName}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textColor,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: textColor),
               ),
             ],
           ),
@@ -844,15 +1225,21 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
       children: [
         Text(
           'Accident Detected',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
         ),
         const SizedBox(height: 8),
-        Text('Location: ${accident.location}', style: TextStyle(color: textColor)),
-        Text('Emergency Contact: ${accident.contactNum}', style: TextStyle(color: textColor)),
-        Text('Response Time: ${accident.contactTime}', style: TextStyle(color: textColor)),
+        Text(
+          'Location: ${accident.location}',
+          style: TextStyle(color: textColor),
+        ),
+        Text(
+          'Emergency Contact: ${accident.contactNum}',
+          style: TextStyle(color: textColor),
+        ),
+        Text(
+          'Response Time: ${accident.contactTime}',
+          style: TextStyle(color: textColor),
+        ),
       ],
     );
   }
@@ -877,10 +1264,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           ),
           Text(
             value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
           ),
         ],
       ),

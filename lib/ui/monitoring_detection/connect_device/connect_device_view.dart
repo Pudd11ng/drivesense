@@ -43,7 +43,6 @@ class _ConnectDeviceViewState extends State<ConnectDeviceView>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    // Make sure to refresh WiFi connection when the view is first shown
     final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
     viewModel.refreshWifiConnection();
 
@@ -115,6 +114,25 @@ class _ConnectDeviceViewState extends State<ConnectDeviceView>
   }
 
   Future<void> _scanForDevices() async {
+    final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
+
+    if (!viewModel.canStartWifiScan()) {
+      setState(() {
+        _isScanning = false;
+        _animationController.stop();
+
+        final remainingSeconds =
+            viewModel.nextAvailableScanTime!
+                .difference(DateTime.now())
+                .inSeconds;
+
+        _errorMessage =
+            'WiFi scanning limited by Android. '
+            'Please wait ${remainingSeconds > 0 ? remainingSeconds : 0} seconds before scanning again.';
+      });
+      return;
+    }
+
     try {
       if (!_isEnabled) {
         // Try to enable WiFi if it's not enabled
@@ -130,6 +148,8 @@ class _ConnectDeviceViewState extends State<ConnectDeviceView>
           _isEnabled = true;
         });
       }
+
+      viewModel.scanTimes.add(DateTime.now());
 
       // Get a WiFiScan instance
       final wifiScan = WiFiScan.instance;
@@ -177,11 +197,11 @@ class _ConnectDeviceViewState extends State<ConnectDeviceView>
           }).toList();
 
       setState(() {
+        _devices.clear();
         _devices.addAll(devicesList);
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _errorMessage = 'Error scanning for devices: $e';
         _isScanning = false;

@@ -7,6 +7,7 @@ import 'package:drivesense/ui/monitoring_detection/device/mjpeg_view.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:drivesense/domain/models/device/device.dart';
 import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart';
+import 'package:drivesense/domain/models/risky_behaviour/risky_behaviour.dart';
 import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
 import 'package:drivesense/ui/core/themes/colors.dart';
 import 'package:drivesense/utils/network_binder.dart';
@@ -21,14 +22,16 @@ class DeviceView extends StatefulWidget {
 }
 
 class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
+  // Add the controller
+  final MJPEGController _mjpegController = MJPEGController();
+
   Device? _device;
   bool _isLoading = true;
   String? _errorMessage;
-  String? _streamUrl;
+  final _streamUrl = dotenv.env['DEVICE_VIDEO_URL'];
 
   // Stream control
   bool _isStreaming = false;
-  StreamController<void>? _streamController;
   Timer? _connectionCheckTimer;
 
   @override
@@ -36,16 +39,12 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Enable wakelock to prevent screen from turning off
     WakelockPlus.enable();
 
-    // Initialize the connection check timer
     _connectionCheckTimer = Timer.periodic(
       const Duration(seconds: 5),
       (_) => _checkConnection(),
     );
-
-    // Initialize the device and stream
     _initializeDeviceAndStream();
   }
 
@@ -66,10 +65,8 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.paused) {
-      // Pause stream when app is in background
       _pauseStream();
     } else if (state == AppLifecycleState.resumed) {
-      // Resume stream when app is back in foreground
       if (_streamUrl != null) {
         _resumeStream();
       }
@@ -95,13 +92,17 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
   }
 
   void _stopStream() {
-    _streamController?.close();
-    _streamController = null;
+    setState(() {
+      _isStreaming = false;
+    });
+    _mjpegController.stopStream();
   }
 
   void _startStream() {
-    _stopStream(); // Close existing if any
-    _streamController = StreamController<void>();
+    setState(() {
+      _isStreaming = true;
+    });
+    _mjpegController.startStream();
   }
 
   void _toggleStream() {
@@ -113,6 +114,14 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
   }
 
   Future<void> _initializeDeviceAndStream() async {
+    _stopStream();
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _isStreaming = false;
+    });
+
     final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
 
     await NetworkBinder.bindWifi();
@@ -122,15 +131,11 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
       _errorMessage = null;
     });
 
-    // Wait for device data to load if needed
     if (viewModel.devices.isEmpty) {
       await viewModel.loadDeviceData();
     }
-
-    // Determine which device to use
     Device? targetDevice;
 
-    // If deviceId is provided, find device by ID
     if (widget.deviceId != null) {
       targetDevice = viewModel.devices.firstWhere(
         (d) => d.deviceId == widget.deviceId,
@@ -167,10 +172,6 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
     try {
       // Format for MJPEG stream
       final deviceId = _device!.deviceSSID.replaceAll("DriveSense_Camera_", "");
-      _streamUrl =
-          dotenv.env['DEVICE_VIDEO_URL'] ??
-          'http://$deviceId.local:8080/?action=stream';
-
       debugPrint('Connecting to MJPEG stream at: $_streamUrl');
 
       _startStream();
@@ -184,35 +185,6 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Failed to initialize video stream: $e';
-      });
-    }
-  }
-
-  Future<void> _tryAlternativeUrl() async {
-    if (_device == null) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final deviceId = _device!.deviceSSID.replaceAll("DriveSense_Camera_", "");
-
-      // Try alternative format
-      _streamUrl = 'http://$deviceId.local:8081/videostream.cgi';
-      debugPrint('Trying alternative URL: $_streamUrl');
-
-      _startStream();
-
-      setState(() {
-        _isLoading = false;
-        _isStreaming = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Failed with alternative URL: $e';
       });
     }
   }
@@ -233,10 +205,23 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
   }
 
   Future<void> _navigateAway(BuildContext context, String route) async {
-    // First unbind network
-    await NetworkBinder.unbind();
+    _connectionCheckTimer?.cancel();
+    _connectionCheckTimer = null;
 
-    // Then navigate if still mounted
+    setState(() {
+      _isStreaming = false;
+    });
+
+    _mjpegController.stopStream();
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    try {
+      await NetworkBinder.unbind();
+    } catch (e) {
+      debugPrint('Error unbinding network: $e');
+    }
+
     if (mounted) {
       context.go(route);
     }
@@ -337,22 +322,6 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
                   ),
                   child: const Text('Try Again'),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _tryAlternativeUrl,
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Try Alternative URL'),
-                ),
               ],
             ),
           ],
@@ -363,69 +332,303 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
 
   Widget _buildStreamView() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final viewModel = Provider.of<MonitoringViewModel>(context);
+    final isMonitoring = viewModel.isMonitoring;
 
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            color: Colors.black,
-            child: _streamUrl != null && _isStreaming
-                ? Stack(
-                    alignment: Alignment.center,
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Camera card with fixed aspect ratio
+          Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.4,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child:
+                  _streamUrl != null && _isStreaming
+                      ? Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // MJPEG view with controller
+                          MJPEGView(
+                            streamUrl: _streamUrl,
+                            showLiveIcon: true,
+                            controller: _mjpegController,
+                          ),
+
+                          // Add streaming controls overlay if needed
+                          Positioned(
+                            bottom: 16,
+                            right: 16,
+                            child: InkWell(
+                              onTap: _toggleStream,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.pause,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                      : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Video off icon and start button
+                            Icon(
+                              Icons.videocam_off,
+                              size: 64,
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _toggleStream,
+                              style: ElevatedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor:
+                                    isDarkMode
+                                        ? AppColors.blue
+                                        : AppColors.darkBlue,
+                              ),
+                              child: const Text('Start Stream'),
+                            ),
+                          ],
+                        ),
+                      ),
+            ),
+          ),
+
+          // Spacing
+          const SizedBox(height: 20),
+
+          // Monitoring info and controls
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Driver Monitoring',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isMonitoring
+                        ? 'System is actively monitoring driver behavior and detecting risks.'
+                        : 'Start monitoring to detect driver behaviors and potential risks.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
-                      // Simple MJPEG view without face detection
-                      MJPEGView(
-                        streamUrl: _streamUrl!,
-                        showLiveIcon: false,
+                      // Status indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isMonitoring
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : Colors.orange.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isMonitoring ? Colors.green : Colors.orange,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color:
+                                    isMonitoring ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isMonitoring ? 'ACTIVE' : 'INACTIVE',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    isMonitoring ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
-                      // Play/pause overlay
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            shape: BoxShape.circle,
+                      const Spacer(),
+
+                      // Start/Stop button
+                      ElevatedButton.icon(
+                        onPressed: _toggleMonitoring,
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor:
+                              isMonitoring
+                                  ? Colors.red
+                                  : isDarkMode
+                                  ? AppColors.blue
+                                  : AppColors.darkBlue,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
                           ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.pause,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            onPressed: _toggleStream,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                        ),
+                        icon: Icon(
+                          isMonitoring ? Icons.stop : Icons.play_arrow,
+                        ),
+                        label: Text(
+                          isMonitoring ? 'Stop Monitoring' : 'Start Monitoring',
                         ),
                       ),
                     ],
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.videocam_off,
-                          size: 64,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _toggleStream,
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: isDarkMode
-                                ? AppColors.blue
-                                : AppColors.darkBlue,
-                          ),
-                          child: const Text('Start Stream'),
-                        ),
-                      ],
-                    ),
                   ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+
+          // If monitoring is active, show detected behaviors
+          if (isMonitoring && viewModel.detectedBehaviors.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: _buildDetectedBehaviorsCard(viewModel.detectedBehaviors),
+            ),
+        ],
+      ),
     );
+  }
+
+  // Add this method to toggle monitoring independently from streaming
+  void _toggleMonitoring() {
+    final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
+
+    if (viewModel.isMonitoring) {
+      viewModel.stopMonitoring();
+    } else {
+      // Ensure stream is running before starting monitoring
+      if (!_isStreaming) {
+        _resumeStream();
+        setState(() {
+          _isStreaming = true;
+        });
+      }
+      viewModel.startMonitoring();
+    }
+  }
+
+  // Add this method to show detected behaviors
+  Widget _buildDetectedBehaviorsCard(List<RiskyBehaviour> behaviors) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.amber),
+                const SizedBox(width: 8),
+                Text(
+                  'Detected Behaviors',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: behaviors.length.clamp(
+                0,
+                5,
+              ), // Show up to 5 recent alerts
+              itemBuilder: (context, index) {
+                final behavior =
+                    behaviors[behaviors.length -
+                        1 -
+                        index]; // Show most recent first
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(_getBehaviorIcon(behavior.behaviourType)),
+                  title: Text(behavior.behaviourType),
+                  subtitle: Text(_formatDetectionTime(behavior.detectedTime)),
+                  dense: true,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to get icon for behavior type
+  IconData _getBehaviorIcon(String behaviourType) {
+    switch (behaviourType.toUpperCase()) {
+      case 'DROWSINESS':
+        return Icons.nightlight;
+      case 'PHONE USAGE':
+        return Icons.phone_android;
+      case 'DISTRACTION':
+        return Icons.remove_red_eye;
+      case 'INTOXICATION':
+        return Icons.local_bar;
+      default:
+        return Icons.warning;
+    }
+  }
+
+  // Helper method to format detection time
+  String _formatDetectionTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min ago';
+    } else {
+      return '${difference.inHours} hr ago';
+    }
   }
 }

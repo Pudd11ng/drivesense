@@ -238,7 +238,7 @@ class _ProfileCompletionViewState extends State<ProfileCompletionView> {
       style: TextStyle(
         color:
             isDarkMode
-                ? AppColors.white.withOpacity(readOnly ? 0.7 : 1.0)
+                ? AppColors.white.withValues(alpha: readOnly ? 0.7 : 1.0)
                 : AppColors.darkGrey,
       ),
     );

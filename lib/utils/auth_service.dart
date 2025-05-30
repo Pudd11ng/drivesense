@@ -25,7 +25,7 @@ class AuthService {
   }
 
   /// Sets a new authentication token and saves to secure storage
-  Future<void> setToken(String token, {int expiresInSeconds = 86400}) async {
+  Future<void> setToken(String token, {int expiresInSeconds = 604800}) async {
     _authToken = token;
     _tokenExpiry = DateTime.now().add(Duration(seconds: expiresInSeconds));
     

@@ -7,10 +7,10 @@ part 'accident.g.dart';
 abstract class Accident with _$Accident {
   factory Accident({
     required String accidentId,
-    required DateTime delectedTime,
+    required DateTime detectedTime,
     required String location,
     required String contactNum,
-    required String contactTime,
+    required DateTime contactTime,
   }) = _Accident;
 
   factory Accident.fromJson(Map<String, dynamic> json) =>

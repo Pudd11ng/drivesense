@@ -48,8 +48,8 @@ class UserManagementViewModel extends ChangeNotifier {
         debugPrint('Login successful: $responseData');
 
         if (responseData['token'] != null) {
-          final int expiresIn = responseData['expiresIn'] ?? 86400; // 24 hours default
-          
+          final int expiresIn = responseData['expiresIn'] ?? 604800; // 7 days default
+
           // Set token in AuthService instead of local storage
           await _authService.setToken(
             responseData['token'],
@@ -128,7 +128,7 @@ class UserManagementViewModel extends ChangeNotifier {
         debugPrint('Google Sign-In successful: $responseData');
 
         if (responseData['token'] != null) {
-          final int expiresIn = responseData['expiresIn'] ?? 86400; // 24 hours default
+          final int expiresIn = responseData['expiresIn'] ?? 604800; // 24 hours default
           
           // Set token in AuthService instead of local storage
           await _authService.setToken(
@@ -189,7 +189,7 @@ class UserManagementViewModel extends ChangeNotifier {
 
         // Store the JWT token from backend
         if (responseData['token'] != null) {
-          final int expiresIn = responseData['expiresIn'] ?? 86400; // 24 hours default
+          final int expiresIn = responseData['expiresIn'] ?? 604800; // 7 days default
           
           // Set token in AuthService instead of local storage
           await _authService.setToken(
@@ -319,6 +319,44 @@ class UserManagementViewModel extends ChangeNotifier {
   Future<http.Client> getAuthenticatedClient() async {
     final token = await _authService.getToken();
     return AuthHttpClient(authToken: token);
+  }
+
+  Future<void> checkAuthStatus() async {
+    final isAuth = await _authService.isAuthenticated();
+    
+    if (isAuth) {
+      try {
+        await loadUserProfile();
+      } catch (e) {
+        debugPrint('Error loading user profile: $e');
+        await logout();
+      }
+    }
+  }
+
+  Future<void> loadUserProfile() async {
+    final token = await _authService.getToken();
+    
+    final response = await http.get(
+      Uri.parse('${dotenv.env['BACKEND_URL']}/api/users/profile'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    
+    if (response.statusCode == 200) {
+      final userData = json.decode(response.body);
+      _user = User.fromJson(userData['user']);
+      _needsProfileCompletion = _user.firstName.isEmpty ||
+          _user.lastName.isEmpty ||
+          _user.dateOfBirth.isEmpty ||
+          _user.country.isEmpty;
+      notifyListeners();
+    } else {
+      // If profile fetch fails, token might be invalid
+      throw Exception('Failed to load user profile');
+    }
   }
 }
 

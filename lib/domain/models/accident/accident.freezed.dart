@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Accident {
 
- String get accidentId; DateTime get delectedTime; String get location; String get contactNum; String get contactTime;
+ String get accidentId; DateTime get detectedTime; String get location; String get contactNum; DateTime get contactTime;
 /// Create a copy of Accident
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $AccidentCopyWith<Accident> get copyWith => _$AccidentCopyWithImpl<Accident>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Accident&&(identical(other.accidentId, accidentId) || other.accidentId == accidentId)&&(identical(other.delectedTime, delectedTime) || other.delectedTime == delectedTime)&&(identical(other.location, location) || other.location == location)&&(identical(other.contactNum, contactNum) || other.contactNum == contactNum)&&(identical(other.contactTime, contactTime) || other.contactTime == contactTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Accident&&(identical(other.accidentId, accidentId) || other.accidentId == accidentId)&&(identical(other.detectedTime, detectedTime) || other.detectedTime == detectedTime)&&(identical(other.location, location) || other.location == location)&&(identical(other.contactNum, contactNum) || other.contactNum == contactNum)&&(identical(other.contactTime, contactTime) || other.contactTime == contactTime));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accidentId,delectedTime,location,contactNum,contactTime);
+int get hashCode => Object.hash(runtimeType,accidentId,detectedTime,location,contactNum,contactTime);
 
 @override
 String toString() {
-  return 'Accident(accidentId: $accidentId, delectedTime: $delectedTime, location: $location, contactNum: $contactNum, contactTime: $contactTime)';
+  return 'Accident(accidentId: $accidentId, detectedTime: $detectedTime, location: $location, contactNum: $contactNum, contactTime: $contactTime)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $AccidentCopyWith<$Res>  {
   factory $AccidentCopyWith(Accident value, $Res Function(Accident) _then) = _$AccidentCopyWithImpl;
 @useResult
 $Res call({
- String accidentId, DateTime delectedTime, String location, String contactNum, String contactTime
+ String accidentId, DateTime detectedTime, String location, String contactNum, DateTime contactTime
 });
 
 
@@ -66,14 +66,14 @@ class _$AccidentCopyWithImpl<$Res>
 
 /// Create a copy of Accident
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? accidentId = null,Object? delectedTime = null,Object? location = null,Object? contactNum = null,Object? contactTime = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? accidentId = null,Object? detectedTime = null,Object? location = null,Object? contactNum = null,Object? contactTime = null,}) {
   return _then(_self.copyWith(
 accidentId: null == accidentId ? _self.accidentId : accidentId // ignore: cast_nullable_to_non_nullable
-as String,delectedTime: null == delectedTime ? _self.delectedTime : delectedTime // ignore: cast_nullable_to_non_nullable
+as String,detectedTime: null == detectedTime ? _self.detectedTime : detectedTime // ignore: cast_nullable_to_non_nullable
 as DateTime,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,contactNum: null == contactNum ? _self.contactNum : contactNum // ignore: cast_nullable_to_non_nullable
 as String,contactTime: null == contactTime ? _self.contactTime : contactTime // ignore: cast_nullable_to_non_nullable
-as String,
+as DateTime,
   ));
 }
 
@@ -84,14 +84,14 @@ as String,
 @JsonSerializable()
 
 class _Accident implements Accident {
-   _Accident({required this.accidentId, required this.delectedTime, required this.location, required this.contactNum, required this.contactTime});
+   _Accident({required this.accidentId, required this.detectedTime, required this.location, required this.contactNum, required this.contactTime});
   factory _Accident.fromJson(Map<String, dynamic> json) => _$AccidentFromJson(json);
 
 @override final  String accidentId;
-@override final  DateTime delectedTime;
+@override final  DateTime detectedTime;
 @override final  String location;
 @override final  String contactNum;
-@override final  String contactTime;
+@override final  DateTime contactTime;
 
 /// Create a copy of Accident
 /// with the given fields replaced by the non-null parameter values.
@@ -106,16 +106,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Accident&&(identical(other.accidentId, accidentId) || other.accidentId == accidentId)&&(identical(other.delectedTime, delectedTime) || other.delectedTime == delectedTime)&&(identical(other.location, location) || other.location == location)&&(identical(other.contactNum, contactNum) || other.contactNum == contactNum)&&(identical(other.contactTime, contactTime) || other.contactTime == contactTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Accident&&(identical(other.accidentId, accidentId) || other.accidentId == accidentId)&&(identical(other.detectedTime, detectedTime) || other.detectedTime == detectedTime)&&(identical(other.location, location) || other.location == location)&&(identical(other.contactNum, contactNum) || other.contactNum == contactNum)&&(identical(other.contactTime, contactTime) || other.contactTime == contactTime));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accidentId,delectedTime,location,contactNum,contactTime);
+int get hashCode => Object.hash(runtimeType,accidentId,detectedTime,location,contactNum,contactTime);
 
 @override
 String toString() {
-  return 'Accident(accidentId: $accidentId, delectedTime: $delectedTime, location: $location, contactNum: $contactNum, contactTime: $contactTime)';
+  return 'Accident(accidentId: $accidentId, detectedTime: $detectedTime, location: $location, contactNum: $contactNum, contactTime: $contactTime)';
 }
 
 
@@ -126,7 +126,7 @@ abstract mixin class _$AccidentCopyWith<$Res> implements $AccidentCopyWith<$Res>
   factory _$AccidentCopyWith(_Accident value, $Res Function(_Accident) _then) = __$AccidentCopyWithImpl;
 @override @useResult
 $Res call({
- String accidentId, DateTime delectedTime, String location, String contactNum, String contactTime
+ String accidentId, DateTime detectedTime, String location, String contactNum, DateTime contactTime
 });
 
 
@@ -143,14 +143,14 @@ class __$AccidentCopyWithImpl<$Res>
 
 /// Create a copy of Accident
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? accidentId = null,Object? delectedTime = null,Object? location = null,Object? contactNum = null,Object? contactTime = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? accidentId = null,Object? detectedTime = null,Object? location = null,Object? contactNum = null,Object? contactTime = null,}) {
   return _then(_Accident(
 accidentId: null == accidentId ? _self.accidentId : accidentId // ignore: cast_nullable_to_non_nullable
-as String,delectedTime: null == delectedTime ? _self.delectedTime : delectedTime // ignore: cast_nullable_to_non_nullable
+as String,detectedTime: null == detectedTime ? _self.detectedTime : detectedTime // ignore: cast_nullable_to_non_nullable
 as DateTime,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,contactNum: null == contactNum ? _self.contactNum : contactNum // ignore: cast_nullable_to_non_nullable
 as String,contactTime: null == contactTime ? _self.contactTime : contactTime // ignore: cast_nullable_to_non_nullable
-as String,
+as DateTime,
   ));
 }
 

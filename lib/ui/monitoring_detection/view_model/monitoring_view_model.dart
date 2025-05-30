@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:drivesense/domain/models/device/device.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:drivesense/utils/auth_service.dart';
+import 'package:drivesense/domain/models/risky_behaviour/risky_behaviour.dart';
+import 'package:drivesense/domain/models/driving_history/driving_history.dart';
+import 'package:drivesense/utils/network_binder.dart';
 
 class MonitoringViewModel extends ChangeNotifier {
   // This view model handles the monitoring and detection of devices
@@ -29,7 +31,7 @@ class MonitoringViewModel extends ChangeNotifier {
   String? _currentWifiBSSID;
   Timer? _wifiCheckTimer;
   bool _isInitialized = false;
-  
+
   // Flag to indicate if the connected device is via WiFi
   bool _isConnectedViaWifi = false;
   bool get isConnectedViaWifi => _isConnectedViaWifi;
@@ -42,6 +44,25 @@ class MonitoringViewModel extends ChangeNotifier {
   bool get hasConnectedDevice => _connectedDevice != null;
 
   final AuthService _authService = AuthService();
+
+  // New properties for behavior tracking
+  DrivingHistory? _currentDrivingHistory;
+  DrivingHistory? get currentDrivingHistory => _currentDrivingHistory;
+
+  bool _isMonitoring = false;
+  bool get isMonitoring => _isMonitoring;
+
+  final List<RiskyBehaviour> _detectedBehaviors = [];
+  List<RiskyBehaviour> get detectedBehaviors =>
+      List.unmodifiable(_detectedBehaviors);
+
+  List<DateTime> _scanTimes = [];
+  bool _isThrottled = false;
+  DateTime? _nextAvailableScanTime;
+
+  List<DateTime> get scanTimes => _scanTimes ;
+  bool get isWifiScanThrottled => _isThrottled;
+  DateTime? get nextAvailableScanTime => _nextAvailableScanTime;
 
   MonitoringViewModel() {
     _initializeWifiMonitoring();
@@ -75,6 +96,25 @@ class MonitoringViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error initializing WiFi monitoring: $e');
     }
+  }
+
+  bool canStartWifiScan() {
+    final now = DateTime.now();
+
+    _scanTimes.removeWhere(
+      (time) => now.difference(time) > const Duration(minutes: 2),
+    );
+
+    if (_scanTimes.length >= 4) {
+      final oldestScan = _scanTimes.first;
+      _nextAvailableScanTime = oldestScan.add(const Duration(minutes: 2));
+      _isThrottled = true;
+      notifyListeners();
+      return false;
+    }
+
+    _isThrottled = false;
+    return true;
   }
 
   Future<void> refreshWifiConnection() async {
@@ -128,7 +168,7 @@ class MonitoringViewModel extends ChangeNotifier {
   void _clearWifiConnection() {
     _currentWifiSSID = null;
     _currentWifiBSSID = null;
-    
+
     // If we were connected via WiFi, clear the connected device
     if (_isConnectedViaWifi) {
       _connectedDevice = null;
@@ -140,9 +180,7 @@ class MonitoringViewModel extends ChangeNotifier {
   // Find device by SSID
   Device? findDeviceBySSID(String ssid) {
     try {
-      return _devices.firstWhere(
-        (device) => device.deviceSSID == ssid,
-      );
+      return _devices.firstWhere((device) => device.deviceSSID == ssid);
     } catch (e) {
       return Device(
         deviceId: 'unknown',
@@ -160,9 +198,7 @@ class MonitoringViewModel extends ChangeNotifier {
   // Get device by SSID, returns null if not found
   Device? getDeviceBySSID(String ssid) {
     try {
-      return _devices.firstWhere(
-        (device) => device.deviceSSID == ssid,
-      );
+      return _devices.firstWhere((device) => device.deviceSSID == ssid);
     } catch (e) {
       return null;
     }
@@ -188,19 +224,19 @@ class MonitoringViewModel extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final List<dynamic> devicesData = json.decode(response.body);
-        
+
         // Clear existing devices
         _devices.clear();
-        
+
         // Manually create Device objects with only the required fields
         for (var data in devicesData) {
           try {
             final device = Device(
-              deviceId: data['_id'] ?? '', // Map _id to deviceId
+              deviceId: data['_id'] ?? '',
               deviceName: data['deviceName'] ?? 'Unnamed Device',
               deviceSSID: data['deviceSSID'] ?? '',
             );
-            
+
             _devices.add(device);
           } catch (e) {
             debugPrint('Error parsing device: $e');
@@ -239,12 +275,12 @@ class MonitoringViewModel extends ChangeNotifier {
         'deviceName': device.deviceName,
         'deviceSSID': device.deviceSSID,
       });
-      
+
       debugPrint('Sending device data: $requestBody');
-      
+
       final headers = await _getHeaders();
       debugPrint('Headers: $headers');
-      
+
       final url = '${dotenv.env['BACKEND_URL']}/api/devices';
       debugPrint('URL: $url');
 
@@ -280,7 +316,8 @@ class MonitoringViewModel extends ChangeNotifier {
         // Enhanced error handling to see validation errors
         try {
           final errorData = json.decode(response.body);
-          _error = 'Failed to add device: ${errorData['message'] ?? response.statusCode}';
+          _error =
+              'Failed to add device: ${errorData['message'] ?? response.statusCode}';
         } catch (e) {
           _error = 'Failed to add device: ${response.statusCode}';
         }
@@ -312,19 +349,21 @@ class MonitoringViewModel extends ChangeNotifier {
         // Remove from local list
         final removedDevice = _devices.firstWhere(
           (device) => device.deviceId == deviceId,
-          orElse: () => Device(
-            deviceId: 'unknown',
-            deviceSSID: 'unknown',
-            deviceName: 'Unknown Device',
-          ),
+          orElse:
+              () => Device(
+                deviceId: 'unknown',
+                deviceSSID: 'unknown',
+                deviceName: 'Unknown Device',
+              ),
         );
-        
+
         _devices.removeWhere((device) => device.deviceId == deviceId);
 
         // If removed device was the connected device, update connection status
         if (_connectedDevice?.deviceId == deviceId) {
           // If it was connected via WiFi, keep WiFi status but clear device
-          if (_isConnectedViaWifi && removedDevice?.deviceSSID == _currentWifiSSID) {
+          if (_isConnectedViaWifi &&
+              removedDevice?.deviceSSID == _currentWifiSSID) {
             // Create a temporary device for the current WiFi
             _connectedDevice = Device(
               deviceId: _currentWifiSSID!.replaceAll('DriveSense_', ''),
@@ -410,10 +449,10 @@ class MonitoringViewModel extends ChangeNotifier {
   // Add methods to manage device connections
   void setConnectedDevice(Device device) {
     _connectedDevice = device;
-    
+
     // If this device matches current WiFi, mark as WiFi connection
     _isConnectedViaWifi = (_currentWifiSSID == device.deviceSSID);
-    
+
     notifyListeners();
   }
 
@@ -455,6 +494,236 @@ class MonitoringViewModel extends ChangeNotifier {
       return result;
     } catch (e) {
       debugPrint('Error disconnecting from WiFi: $e');
+      return false;
+    }
+  }
+
+  // Monitoring session management methods
+
+  Future<void> startMonitoring() async {
+    if (_isMonitoring) return;
+    _isMonitoring = true;
+    _detectedBehaviors.clear();
+
+    // Create a new driving history locally
+    final newDrivingHistory = DrivingHistory(
+      startTime: DateTime.now(),
+      endTime: DateTime.now(), // Will update when stopping
+      accident: [],
+      riskyBehaviour: [],
+    );
+
+    try {
+      // Unbind from WiFi before API call
+      await NetworkBinder.unbind();
+
+      final url = '${dotenv.env['BACKEND_URL']}/api/driving';
+
+      // Send initial history to backend to get an ID
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: json.encode({
+          'startTime': newDrivingHistory.startTime.toIso8601String(),
+          'endTime': newDrivingHistory.endTime.toIso8601String(),
+          'accidents': [],
+          'riskyBehaviours': [],
+        }),
+      );
+
+      // Rebind to WiFi after API call
+      await NetworkBinder.bindWifi();
+
+      if (response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+
+        // Store the history with backend-generated ID
+        _currentDrivingHistory = newDrivingHistory.copyWith(
+          drivingHistoryId: responseData['_id'],
+        );
+
+        debugPrint(
+          'Driving history created with ID: ${_currentDrivingHistory!.drivingHistoryId}',
+        );
+      } else {
+        debugPrint('Failed to create driving history: ${response.statusCode}');
+        // Still track locally even if backend fails
+        _currentDrivingHistory = newDrivingHistory;
+      }
+    } catch (e) {
+      debugPrint('Exception creating driving history: $e');
+      // Make sure we rebind even if there's an error
+      await NetworkBinder.bindWifi();
+      // Still track locally even if backend fails
+      _currentDrivingHistory = newDrivingHistory;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> stopMonitoring() async {
+    if (!_isMonitoring) return;
+
+    _isMonitoring = false;
+
+    // Update the end time in the backend
+    if (_currentDrivingHistory?.drivingHistoryId != null) {
+      try {
+        // Unbind from WiFi before API call
+        await NetworkBinder.unbind();
+
+        final historyId = _currentDrivingHistory!.drivingHistoryId!;
+        final url = '${dotenv.env['BACKEND_URL']}/api/driving/$historyId';
+
+        final response = await http.put(
+          Uri.parse(url),
+          headers: await _getHeaders(),
+          body: json.encode({'endTime': DateTime.now().toIso8601String()}),
+        );
+
+        if (response.statusCode == 200) {
+          debugPrint('Driving history ended successfully');
+        } else {
+          debugPrint(
+            'Failed to update driving history end time: ${response.statusCode}',
+          );
+        }
+
+        // Rebind to WiFi after API call
+        await NetworkBinder.bindWifi();
+      } catch (e) {
+        debugPrint('Exception ending driving history: $e');
+        // Make sure we rebind even if there's an error
+        await NetworkBinder.bindWifi();
+      }
+    }
+
+    // Update the local object regardless of backend success
+    _currentDrivingHistory = _currentDrivingHistory?.copyWith(
+      endTime: DateTime.now(),
+    );
+
+    notifyListeners();
+  }
+
+  // Add the behavior reporting function
+  Future<RiskyBehaviour?> addBehaviour({
+    required String behaviourType,
+    required String alertTypeName,
+    required DateTime detectedTime,
+  }) async {
+    if (!_isMonitoring || _currentDrivingHistory?.drivingHistoryId == null) {
+      debugPrint('Cannot add behavior: monitoring not active or no history ID');
+      return null;
+    }
+
+    final historyId = _currentDrivingHistory!.drivingHistoryId!;
+
+    try {
+      // Unbind from WiFi before API call to use mobile data
+      await NetworkBinder.unbind();
+
+      // First, create the behavior
+      final behaviorsUrl =
+          '${dotenv.env['BACKEND_URL']}/api/driving/$historyId/behaviours';
+
+      final behaviorResponse = await http.post(
+        Uri.parse(behaviorsUrl),
+        headers: await _getHeaders(),
+        body: json.encode({
+          'behaviourType': behaviourType,
+          'alertTypeName': alertTypeName,
+          'detectedTime': detectedTime.toIso8601String(),
+        }),
+      );
+
+      if (behaviorResponse.statusCode == 201) {
+        final data = json.decode(behaviorResponse.body);
+        final riskyBehavior = RiskyBehaviour.fromJson(data);
+
+        // Rebind to WiFi after API calls
+        await NetworkBinder.bindWifi();
+
+        // Add to our list of detected behaviors
+        _detectedBehaviors.add(riskyBehavior);
+        notifyListeners();
+
+        return riskyBehavior;
+      } else {
+        debugPrint('Error creating behavior: ${behaviorResponse.statusCode}');
+        await NetworkBinder.bindWifi();
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Exception reporting behavior: $e');
+      // Make sure we rebind even if there's an error
+      await NetworkBinder.bindWifi();
+      return null;
+    }
+  }
+
+  // Helper method to send complete driving history
+  Future<bool> _sendDrivingHistory(DrivingHistory drivingHistory) async {
+    try {
+      // Unbind from WiFi before API call
+      await NetworkBinder.unbind();
+      final url = '${dotenv.env['BACKEND_URL']}/api/driving';
+
+      // Extract accident IDs and risky behaviour IDs
+      final List<String> accidentIds =
+          drivingHistory.accident
+              .map((accident) => accident.accidentId)
+              .where((id) => id.isNotEmpty)
+              .toList();
+
+      final List<String> riskyBehaviourIds =
+          drivingHistory.riskyBehaviour
+              .map((behaviour) => behaviour.behaviourId)
+              .where((id) => id.isNotEmpty)
+              .toList();
+
+      // Create payload with format backend expects
+      final payload = {
+        'startTime': drivingHistory.startTime.toIso8601String(),
+        'endTime': drivingHistory.endTime.toIso8601String(),
+        'accidents': accidentIds,
+        'riskyBehaviours': riskyBehaviourIds,
+      };
+
+      // For debug purposes
+      debugPrint('Sending payload: ${json.encode(payload)}');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: json.encode(payload),
+      );
+
+      // Rebind to WiFi after API call
+      await NetworkBinder.bindWifi();
+
+      if (response.statusCode == 201) {
+        // Update the driving history with the ID from the backend
+        final responseData = json.decode(response.body);
+
+        // Update the current driving history with the backend-generated ID
+        _currentDrivingHistory = _currentDrivingHistory!.copyWith(
+          drivingHistoryId:
+              responseData['_id'], // or whatever field name your backend uses
+        );
+
+        debugPrint('Driving history saved successfully');
+        return true;
+      } else {
+        debugPrint(
+          'Failed to save driving history: ${response.statusCode}, ${response.body}',
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Exception sending driving history: $e');
+      // Make sure we rebind even if there's an error
+      await NetworkBinder.bindWifi();
       return false;
     }
   }

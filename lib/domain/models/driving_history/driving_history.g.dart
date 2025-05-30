@@ -8,7 +8,7 @@ part of 'driving_history.dart';
 
 _DrivingHistory _$DrivingHistoryFromJson(Map<String, dynamic> json) =>
     _DrivingHistory(
-      drivingHistoryId: json['drivingHistoryId'] as String,
+      drivingHistoryId: json['drivingHistoryId'] as String?,
       startTime: DateTime.parse(json['startTime'] as String),
       endTime: DateTime.parse(json['endTime'] as String),
       accident:

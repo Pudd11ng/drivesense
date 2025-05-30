@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DrivingHistory {
 
- String get drivingHistoryId; DateTime get startTime; DateTime get endTime; List<Accident> get accident; List<RiskyBehaviour> get riskyBehaviour;
+ String? get drivingHistoryId; DateTime get startTime; DateTime get endTime; List<Accident> get accident; List<RiskyBehaviour> get riskyBehaviour;
 /// Create a copy of DrivingHistory
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $DrivingHistoryCopyWith<$Res>  {
   factory $DrivingHistoryCopyWith(DrivingHistory value, $Res Function(DrivingHistory) _then) = _$DrivingHistoryCopyWithImpl;
 @useResult
 $Res call({
- String drivingHistoryId, DateTime startTime, DateTime endTime, List<Accident> accident, List<RiskyBehaviour> riskyBehaviour
+ String? drivingHistoryId, DateTime startTime, DateTime endTime, List<Accident> accident, List<RiskyBehaviour> riskyBehaviour
 });
 
 
@@ -66,10 +66,10 @@ class _$DrivingHistoryCopyWithImpl<$Res>
 
 /// Create a copy of DrivingHistory
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? drivingHistoryId = null,Object? startTime = null,Object? endTime = null,Object? accident = null,Object? riskyBehaviour = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? drivingHistoryId = freezed,Object? startTime = null,Object? endTime = null,Object? accident = null,Object? riskyBehaviour = null,}) {
   return _then(_self.copyWith(
-drivingHistoryId: null == drivingHistoryId ? _self.drivingHistoryId : drivingHistoryId // ignore: cast_nullable_to_non_nullable
-as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
+drivingHistoryId: freezed == drivingHistoryId ? _self.drivingHistoryId : drivingHistoryId // ignore: cast_nullable_to_non_nullable
+as String?,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,endTime: null == endTime ? _self.endTime : endTime // ignore: cast_nullable_to_non_nullable
 as DateTime,accident: null == accident ? _self.accident : accident // ignore: cast_nullable_to_non_nullable
 as List<Accident>,riskyBehaviour: null == riskyBehaviour ? _self.riskyBehaviour : riskyBehaviour // ignore: cast_nullable_to_non_nullable
@@ -84,10 +84,10 @@ as List<RiskyBehaviour>,
 @JsonSerializable()
 
 class _DrivingHistory implements DrivingHistory {
-   _DrivingHistory({required this.drivingHistoryId, required this.startTime, required this.endTime, required final  List<Accident> accident, required final  List<RiskyBehaviour> riskyBehaviour}): _accident = accident,_riskyBehaviour = riskyBehaviour;
+   _DrivingHistory({this.drivingHistoryId, required this.startTime, required this.endTime, required final  List<Accident> accident, required final  List<RiskyBehaviour> riskyBehaviour}): _accident = accident,_riskyBehaviour = riskyBehaviour;
   factory _DrivingHistory.fromJson(Map<String, dynamic> json) => _$DrivingHistoryFromJson(json);
 
-@override final  String drivingHistoryId;
+@override final  String? drivingHistoryId;
 @override final  DateTime startTime;
 @override final  DateTime endTime;
  final  List<Accident> _accident;
@@ -138,7 +138,7 @@ abstract mixin class _$DrivingHistoryCopyWith<$Res> implements $DrivingHistoryCo
   factory _$DrivingHistoryCopyWith(_DrivingHistory value, $Res Function(_DrivingHistory) _then) = __$DrivingHistoryCopyWithImpl;
 @override @useResult
 $Res call({
- String drivingHistoryId, DateTime startTime, DateTime endTime, List<Accident> accident, List<RiskyBehaviour> riskyBehaviour
+ String? drivingHistoryId, DateTime startTime, DateTime endTime, List<Accident> accident, List<RiskyBehaviour> riskyBehaviour
 });
 
 
@@ -155,10 +155,10 @@ class __$DrivingHistoryCopyWithImpl<$Res>
 
 /// Create a copy of DrivingHistory
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? drivingHistoryId = null,Object? startTime = null,Object? endTime = null,Object? accident = null,Object? riskyBehaviour = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? drivingHistoryId = freezed,Object? startTime = null,Object? endTime = null,Object? accident = null,Object? riskyBehaviour = null,}) {
   return _then(_DrivingHistory(
-drivingHistoryId: null == drivingHistoryId ? _self.drivingHistoryId : drivingHistoryId // ignore: cast_nullable_to_non_nullable
-as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
+drivingHistoryId: freezed == drivingHistoryId ? _self.drivingHistoryId : drivingHistoryId // ignore: cast_nullable_to_non_nullable
+as String?,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,endTime: null == endTime ? _self.endTime : endTime // ignore: cast_nullable_to_non_nullable
 as DateTime,accident: null == accident ? _self._accident : accident // ignore: cast_nullable_to_non_nullable
 as List<Accident>,riskyBehaviour: null == riskyBehaviour ? _self._riskyBehaviour : riskyBehaviour // ignore: cast_nullable_to_non_nullable

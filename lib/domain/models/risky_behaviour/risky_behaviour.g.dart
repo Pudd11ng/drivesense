@@ -9,7 +9,7 @@ part of 'risky_behaviour.dart';
 _RiskyBehaviour _$RiskyBehaviourFromJson(Map<String, dynamic> json) =>
     _RiskyBehaviour(
       behaviourId: json['behaviourId'] as String,
-      delectedTime: DateTime.parse(json['delectedTime'] as String),
+      detectedTime: DateTime.parse(json['detectedTime'] as String),
       behaviourType: json['behaviourType'] as String,
       alertTypeName: json['alertTypeName'] as String,
     );
@@ -17,7 +17,7 @@ _RiskyBehaviour _$RiskyBehaviourFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$RiskyBehaviourToJson(_RiskyBehaviour instance) =>
     <String, dynamic>{
       'behaviourId': instance.behaviourId,
-      'delectedTime': instance.delectedTime.toIso8601String(),
+      'detectedTime': instance.detectedTime.toIso8601String(),
       'behaviourType': instance.behaviourType,
       'alertTypeName': instance.alertTypeName,
     };

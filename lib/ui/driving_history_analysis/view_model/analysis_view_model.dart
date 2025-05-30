@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:drivesense/domain/models/driving_history/driving_history.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:drivesense/utils/auth_service.dart';
 
 class AnalysisViewModel extends ChangeNotifier {
   List<DrivingHistory> _allDrivingHistory = [];
@@ -36,40 +39,96 @@ class AnalysisViewModel extends ChangeNotifier {
     loadDrivingHistory();
   }
 
-  // Load driving history data from source (JSON file for demo)
+  final AuthService _authService = AuthService();
+
+  // Helper method for API headers
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _authService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
   Future<void> loadDrivingHistory() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Load from local JSON file (in real app, this would be an API call)
-      final String response = await rootBundle.loadString(
-        'assets/data/driving_history_data.json',
+      final url = '${dotenv.env['BACKEND_URL']}/api/driving';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await _getHeaders(),
       );
-      final List<dynamic> jsonData = json.decode(response);
 
-      _allDrivingHistory =
-          jsonData.map((data) => DrivingHistory.fromJson(data)).toList();
+      if (response.statusCode == 200) {
+        // Parse response - we know it has a "data" field containing the records
+        final jsonResponse = json.decode(response.body);
+        final List<dynamic> historyList = jsonResponse['data'] ?? [];
+        print(jsonResponse);
+        _allDrivingHistory = [];
+        
+        for (var item in historyList) {
+          try {
+            // Map accidents with proper field mappings
+            final List<dynamic> rawAccidents = item['accidents'] ?? [];
+            final accidents = rawAccidents.map((accident) {
+              return {
+                'accidentId': accident['_id'] ?? 'unknown',
+                'detectedTime': accident['detectedTime'] ?? DateTime.now().toIso8601String(),
+                'location': accident['location'] ?? 'unknown',
+                'contactNum': accident['contactNum'] ?? 'unknown',
+                'contactTime': accident['contactTime'] ?? DateTime.now().toIso8601String(),
+              };
+            }).toList();
+            print(accidents);
 
-      // Apply initial month filter
-      filterByMonth(_selectedMonth);
+            // Map risky behaviors with proper field mappings
+            final List<dynamic> rawBehaviors = item['riskyBehaviours'] ?? [];
+            final behaviors = rawBehaviors.map((behavior) {
+              return {
+                'behaviourId': behavior['_id'] ?? 'unknown',
+                'detectedTime': behavior['detectedTime'] ?? DateTime.now().toIso8601String(),
+                'behaviourType': behavior['behaviourType'] ?? 'unknown',
+                'alertTypeName': behavior['alertTypeName'] ?? 'unknown',
+              };
+            }).toList();
+            print(behaviors);
 
-      _isLoading = false;
-      notifyListeners();
+            // Create the model with mapped fields
+            final history = DrivingHistory.fromJson({
+              'drivingHistoryId': item['_id'] ?? 'unknown',
+              'startTime': item['startTime'] ?? DateTime.now().toIso8601String(),
+              'endTime': item['endTime'] ?? DateTime.now().toIso8601String(),
+              'accident': accidents,
+              'riskyBehaviour': behaviors,
+            });
+            
+            _allDrivingHistory.add(history);
+          } catch (e) {
+            debugPrint('Error parsing history item: $e');
+          }
+        }
+        
+        debugPrint('Loaded ${_allDrivingHistory.length} driving history records');
+        
+        // Filter records by selected month
+        filterByMonth(_selectedMonth);
+        _isLoading = false;
+      } else {
+        _isLoading = false;
+        _errorMessage = 'Server returned ${response.statusCode}';
+        _filteredDrivingHistory = [];
+      }
     } catch (e) {
-      debugPrint('Error loading driving history: $e');
       _isLoading = false;
-      _errorMessage = 'Failed to load driving history. Please try again.';
-
-      // Initialize with empty list on error
+      _errorMessage = 'Connection error';
       _filteredDrivingHistory = [];
-
-      notifyListeners();
     }
+    
+    notifyListeners();
   }
 
   // Filter history by month
@@ -84,6 +143,8 @@ class AnalysisViewModel extends ChangeNotifier {
 
     // Sort by date descending (newest first)
     _filteredDrivingHistory.sort((a, b) => b.startTime.compareTo(a.startTime));
+
+    debugPrint('After filtering by month ${DateFormat("yyyy-MM").format(_selectedMonth)}: ${_filteredDrivingHistory.length} items');
 
     notifyListeners();
   }
@@ -144,32 +205,38 @@ class AnalysisViewModel extends ChangeNotifier {
     }
   }
 
-  int calculateRiskScore(DrivingHistory history) {
-    // Calculate a risk score from 0-100 based on alerts and accidents
-    int baseScore = 100;
+  Future<Map<String, dynamic>> getDrivingTips() async {
+    try {
+      // Set date filter for past 3 months
+      final now = DateTime.now();
+      final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+      
+      final startDate = DateFormat('yyyy-MM-dd').format(threeMonthsAgo);
+      final endDate = DateFormat('yyyy-MM-dd').format(now);
+      
+      final url = '${dotenv.env['BACKEND_URL']}/api/driving/tips?startDate=$startDate&endDate=$endDate';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+      );
 
-    // Deduct points for each risky behavior
-    baseScore -= history.riskyBehaviour.length * 5;
-
-    // Deduct more points for accidents
-    baseScore -= history.accident.length * 20;
-
-    // Ensure score stays within 0-100 range
-    return baseScore.clamp(0, 100);
-  }
-
-  String getRiskAnalysis(DrivingHistory history) {
-    final score = calculateRiskScore(history);
-    final duration = history.endTime.difference(history.startTime).inMinutes;
-
-    if (score >= 90) {
-      return 'Excellent driving session with minimal risk behaviors detected. Keep up the good work!';
-    } else if (score >= 70) {
-      return 'Good driving session with some risk behaviors. Consider taking breaks during drives longer than ${duration ~/ 2} minutes.';
-    } else if (score >= 50) {
-      return 'Average driving session with several risk behaviors detected. Try to minimize distractions and stay alert.';
-    } else {
-      return 'High-risk driving session. Multiple safety concerns were detected. Consider driver coaching or shorter trips in the future.';
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        print(jsonResponse);
+        return jsonResponse;
+      } else {
+        return {
+          'drivingSummary': {},
+          'drivingTips': 'Unable to fetch driving tips at this time.'
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching driving tips: $e');
+      return {
+        'drivingSummary': {},
+        'drivingTips': 'Connection error while retrieving driving tips.'
+      };
     }
   }
 }

@@ -7,7 +7,7 @@ part 'risky_behaviour.g.dart';
 abstract class RiskyBehaviour with _$RiskyBehaviour {
   factory RiskyBehaviour({
     required String behaviourId,
-    required DateTime delectedTime,
+    required DateTime detectedTime,
     required String behaviourType,
     required String alertTypeName,
   }) = _RiskyBehaviour;

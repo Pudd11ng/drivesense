@@ -8,7 +8,7 @@ part 'driving_history.g.dart';
 @freezed
 abstract class DrivingHistory with _$DrivingHistory {
   factory DrivingHistory({
-    required String drivingHistoryId,
+    String? drivingHistoryId,
     required DateTime startTime,
     required DateTime endTime,
     required List<Accident> accident,
