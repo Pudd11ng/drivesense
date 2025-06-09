@@ -72,19 +72,6 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
             title: 'Driving Analysis',
             leading: const Icon(Icons.arrow_back),
             onLeadingPressed: () => context.pop(),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.share, color: accentColor),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Sharing not implemented'),
-                      backgroundColor: accentColor,
-                    ),
-                  );
-                },
-              ),
-            ],
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

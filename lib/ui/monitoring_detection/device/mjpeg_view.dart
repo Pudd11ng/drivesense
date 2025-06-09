@@ -9,6 +9,164 @@ import 'package:ultralytics_yolo/yolo.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/monitoring_detection/view_model/monitoring_view_model.dart'; // Adjust the import based on your project structure
 
+// Class to track behavior signals over time
+class BehaviorTracker {
+  // Store the start time of continuous detection for each behavior
+  final Map<String, DateTime> _detectionStartTimes = {};
+  
+  // Store when behaviors were last reported to avoid repeated alerts
+  final Map<String, DateTime> _lastReportedTimes = {};
+  
+  // For intoxication: track which signals are currently active
+  final Map<String, DateTime> _intoxicationSignals = {};
+
+  // NEW: Track the last time ANY behavior was reported (global cooldown)
+  DateTime? _lastAnyBehaviorReportedTime;
+  
+  // NEW: Global cooldown period in seconds
+  final int _globalCooldownPeriod = 60; // 1 minute global cooldown
+  
+  // Configure thresholds (in seconds) for different behaviors
+  final Map<String, int> _durationThresholds = {
+    'drowsy': 6,      // Need 10 seconds of continuous detection
+    'yawn': 3,        // Need 3 seconds of continuous detection
+    'phone': 6,       // Need 6 seconds of continuous detection
+    'distraction': 6, // Need 6 seconds of continuous detection
+  };
+  
+  // Configure cooldown periods (in seconds)
+  final Map<String, int> _cooldownPeriods = {
+    'drowsy': 120,        // Don't report drowsiness again for 2 minutes
+    'yawn': 120,          // Don't report yawning again for 2 minutes
+    'phone': 120,         // Don't report phone usage again for 2 minutes
+    'distraction': 120,   // Don't report distraction again for 2 minutes
+    'INTOXICATION': 120,  // Don't report intoxication again for 2 minutes
+  };
+
+  // Track a single behavior detection (for duration-based confirmation)
+  bool trackDetection(String className, double confidence) {
+    final now = DateTime.now();
+    
+    // NEW: Check global cooldown first
+    if (_isInGlobalCooldown(now)) {
+      return false;
+    }
+    
+    // Start timing if this is a new detection
+    if (!_detectionStartTimes.containsKey(className)) {
+      _detectionStartTimes[className] = now;
+      return false; // First detection, start tracking but don't report yet
+    }
+    
+    // Check if detection exceeds threshold duration
+    final detectionStart = _detectionStartTimes[className]!;
+    final detectionDuration = now.difference(detectionStart).inSeconds;
+    final threshold = _durationThresholds[className] ?? 3; // Default 3 seconds
+    
+    // Check if we've exceeded the duration threshold
+    if (detectionDuration >= threshold) {
+      // Check if we're in cooldown period
+      final lastReported = _lastReportedTimes[className];
+      final cooldownPeriod = _cooldownPeriods[className] ?? 30; // Default 30 seconds
+      
+      if (lastReported == null || 
+          now.difference(lastReported).inSeconds >= cooldownPeriod) {
+        // We can report this behavior now
+        _lastReportedTimes[className] = now;
+        _lastAnyBehaviorReportedTime = now; // NEW: Update global cooldown tracker
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  // Track intoxication signals (for multi-signal validation)
+  bool trackIntoxicationSignal(String signalName, double confidence) {
+    final now = DateTime.now();
+    
+    // NEW: Check global cooldown first
+    if (_isInGlobalCooldown(now)) {
+      return false;
+    }
+    
+    // Add or update this signal's timestamp
+    _intoxicationSignals[signalName] = now;
+    
+    // Check if we have multiple recent signals (within 3 seconds of each other)
+    if (_intoxicationSignals.length >= 2) {
+      // Count how many signals are recent (within the last 3 seconds)
+      int recentSignals = 0;
+      for (final timestamp in _intoxicationSignals.values) {
+        if (now.difference(timestamp).inSeconds <= 3) {
+          recentSignals++;
+        }
+      }
+      
+      // If we have at least 2 recent signals, check cooldown period
+      if (recentSignals >= 2) {
+        final lastReported = _lastReportedTimes['INTOXICATION'];
+        final cooldownPeriod = _cooldownPeriods['INTOXICATION'] ?? 120; // Default 2 minutes
+        
+        if (lastReported == null || 
+            now.difference(lastReported).inSeconds >= cooldownPeriod) {
+          // We can report intoxication now
+          _lastReportedTimes['INTOXICATION'] = now;
+          _lastAnyBehaviorReportedTime = now; // NEW: Update global cooldown tracker
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  // NEW: Helper method to check if we're in the global cooldown period
+  bool _isInGlobalCooldown(DateTime now) {
+    if (_lastAnyBehaviorReportedTime == null) {
+      return false; // No behavior has been reported yet
+    }
+    
+    // Check if we're within the global cooldown period
+    final timeSinceLastReport = now.difference(_lastAnyBehaviorReportedTime!).inSeconds;
+    return timeSinceLastReport < _globalCooldownPeriod;
+  }
+  
+  // Reset tracking when behavior stops being detected
+  void resetDetection(String className) {
+    _detectionStartTimes.remove(className);
+  }
+  
+  // Reset intoxication signal
+  void resetIntoxicationSignal(String signalName) {
+    _intoxicationSignals.remove(signalName);
+  }
+  
+  // Clean up old intoxication signals (call periodically)
+  void cleanupIntoxicationSignals() {
+    final now = DateTime.now();
+    _intoxicationSignals.removeWhere((key, timestamp) {
+      return now.difference(timestamp).inSeconds > 5; // Remove signals older than 5 seconds
+    });
+  }
+  
+  // NEW: Debug method to check cooldown status (useful for logging)
+  String getDebugInfo() {
+    final now = DateTime.now();
+    String info = 'Global cooldown: ';
+    
+    if (_lastAnyBehaviorReportedTime == null) {
+      info += 'not active';
+    } else {
+      final secondsLeft = _globalCooldownPeriod - 
+          now.difference(_lastAnyBehaviorReportedTime!).inSeconds;
+      info += secondsLeft > 0 ? '$secondsLeft seconds left' : 'inactive';
+    }
+    
+    return info;
+  }
+}
+
 class MJPEGView extends StatefulWidget {
   final String streamUrl;
   final bool showLiveIcon;
@@ -61,6 +219,11 @@ class _MJPEGViewState extends State<MJPEGView> {
   bool _yoloInitialized = false;
   // int _frameCounter = 0;         // Uncomment if you want to limit YOLO processing frequency
 
+  // Add this as a class property
+  final BehaviorTracker _behaviorTracker = BehaviorTracker();
+  final Set<String> _currentDetectionClasses = <String>{};
+  Timer? _cleanupTimer;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +232,11 @@ class _MJPEGViewState extends State<MJPEGView> {
     }
     _initializeYolo();
     _startStream();
+
+    // Add a periodic timer to clean up old signals
+    _cleanupTimer = Timer.periodic(Duration(seconds: 2), (_) {
+      _behaviorTracker.cleanupIntoxicationSignals();
+    });
   }
 
   Future<void> _initializeYolo() async {
@@ -94,6 +262,7 @@ class _MJPEGViewState extends State<MJPEGView> {
 
   @override
   void dispose() {
+    _cleanupTimer?.cancel();
     if (mounted) {
       final viewModel = Provider.of<MonitoringViewModel>(
         context,
@@ -207,7 +376,6 @@ class _MJPEGViewState extends State<MJPEGView> {
                     debugPrint('Monitoring started automatically with stream');
                   }
                 }
-                print(frameBytes);
 
                 // Process with face detection first, then YOLO
                 if (!_isProcessing) {
@@ -443,57 +611,91 @@ class _MJPEGViewState extends State<MJPEGView> {
     // Get the view model from the context
     final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
 
-    // Only process high-confidence detections (adjust threshold as needed)
-    final highConfidenceDetections =
-        detections.where((detection) => detection.confidence >= 0.5).toList();
+    // Track which classes are detected in this frame
+    Set<String> detectedClassesInFrame = <String>{};
+
+    // Process high-confidence detections
+    final highConfidenceDetections = detections.where((detection) => detection.confidence >= 0.5).toList();
+    
+    // Handle intoxication signals separately
+    bool reportIntoxication = false;
+    List<String> intoxicationSignalsDetected = [];
 
     for (final detection in highConfidenceDetections) {
-      // Map YOLO class to behavior type
-      String behaviourType;
-      String alertName;
-
+      detectedClassesInFrame.add(detection.className);
+      
+      // Handle based on detection class
       switch (detection.className) {
+        // Duration-based behaviors
         case 'drowsy':
-          behaviourType = 'DROWSINESS';
-          alertName = 'Default';
-          break;
         case 'phone':
-          behaviourType = 'PHONE USAGE';
-          alertName = 'Default';
-          break;
         case 'yawn':
-          behaviourType = 'DROWSINESS';
-          alertName = 'Default';
-          break;
-        case 'Bloodshot eyes':
-          behaviourType = 'INTOXICATION';
-          alertName = 'Default';
-          break;
-        case 'Droopy eyelids':
-          behaviourType = 'INTOXICATION';
-          alertName = 'Default';
-          break;
-        case 'Flushed skin':
-          behaviourType = 'INTOXICATION';
-          alertName = 'Default';
-          break;
         case 'distraction':
-          behaviourType = 'DISTRACTION';
-          alertName = 'Default';
+          if (_behaviorTracker.trackDetection(detection.className, detection.confidence)) {
+            // Duration threshold met, report the behavior
+            String behaviourType;
+            if (detection.className == 'drowsy' || detection.className == 'yawn') {
+              behaviourType = 'DROWSINESS';
+            } else if (detection.className == 'phone') {
+              behaviourType = 'PHONE USAGE';
+            } else {
+              behaviourType = detection.className.toUpperCase();
+            }
+            
+            print('Confirmed ${detection.className}: ${detection.confidence.toStringAsFixed(2)} - reporting as $behaviourType');
+            
+            // Pass context to play alert
+            viewModel.addBehaviour(
+              behaviourType: behaviourType,
+              alertTypeName: 'Default',
+              detectedTime: DateTime.now(),
+              context: context, // Pass context here
+            );
+          }
           break;
-        default:
-          // If unrecognized, use the class name directly
-          behaviourType = detection.className.toUpperCase();
-          alertName = '${detection.className} detected';
-      }
 
-      // Report to backend via MonitoringViewModel
+        // Intoxication signals
+        case 'Bloodshot eyes':
+        case 'Droopy eyelids':
+        case 'Flushed skin':
+          intoxicationSignalsDetected.add(detection.className);
+          if (_behaviorTracker.trackIntoxicationSignal(detection.className, detection.confidence)) {
+            reportIntoxication = true;
+          }
+          break;
+          
+        default:
+          // Other behaviors not requiring special handling
+          break;
+      }
+    }
+    
+    // Report intoxication if required signals are present
+    if (reportIntoxication) {
+      print('Confirmed INTOXICATION with multiple signals: ${intoxicationSignalsDetected.join(", ")}');
+      // Pass context to play alert
       viewModel.addBehaviour(
-        behaviourType: behaviourType,
-        alertTypeName: alertName,
+        behaviourType: 'INTOXICATION',
+        alertTypeName: 'Default',
         detectedTime: DateTime.now(),
+        context: context, // Pass context here
       );
     }
+    
+    // Reset tracking for behaviors no longer present
+    for (final trackedClass in _currentDetectionClasses.toList()) {
+      if (!detectedClassesInFrame.contains(trackedClass)) {
+        if (['Bloodshot eyes', 'Droopy eyelids', 'Flushed skin'].contains(trackedClass)) {
+          _behaviorTracker.resetIntoxicationSignal(trackedClass);
+        } else {
+          _behaviorTracker.resetDetection(trackedClass);
+        }
+        _currentDetectionClasses.remove(trackedClass);
+      }
+    }
+    
+    // Update current detections
+    _currentDetectionClasses.addAll(detectedClassesInFrame);
   }
 
   YOLOResult convertToYoloResult(Map<String, dynamic> box) {

@@ -23,11 +23,11 @@ class GoRouterObserver extends NavigatorObserver {
   }
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 final AuthService _authService = AuthService();
 
 final GoRouter router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: Routes.home,
   observers: [GoRouterObserver()],
   redirect: (BuildContext context, GoRouterState state) async {
