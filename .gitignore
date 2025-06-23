@@ -12,6 +12,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+firebase.json
+google-services.json
 
 # IntelliJ related
 *.iml

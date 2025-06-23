@@ -9,13 +9,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:drivesense/utils/auth_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+// import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:drivesense/domain/models/risky_behaviour/risky_behaviour.dart';
 import 'package:drivesense/domain/models/driving_history/driving_history.dart';
 import 'package:drivesense/utils/network_binder.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:drivesense/ui/core/themes/colors.dart';
 import 'package:drivesense/ui/alert_notification/view_model/alert_view_model.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 import 'package:drivesense/utils/accident_detection_service.dart';
 import 'package:drivesense/domain/models/accident/accident.dart';
 
@@ -94,6 +95,9 @@ class MonitoringViewModel extends ChangeNotifier {
   final _accidentStreamController =
       StreamController<List<Accident>>.broadcast();
   Stream<List<Accident>> get accidentStream => _accidentStreamController.stream;
+
+  // Add this to the top of the class
+  final List<VoidCallback> _connectionErrorListeners = [];
 
   MonitoringViewModel() {
     _initializeWifiMonitoring();
@@ -574,28 +578,30 @@ class MonitoringViewModel extends ChangeNotifier {
         debugPrint(
           'Driving history created with ID: ${_currentDrivingHistory!.drivingHistoryId}',
         );
+
+        // Start accident detection service
+        _accidentService.initialize(rootNavigatorKey.currentContext!);
+        _accidentService.onAccidentDetected = _handleAccidentDetection;
+        _accidentService.startMonitoring();
       } else {
         debugPrint('Failed to create driving history: ${response.statusCode}');
-        // Still track locally even if backend fails
-        _currentDrivingHistory = newDrivingHistory;
-      }
+        _isMonitoring = false;
 
-      // Start accident detection service
-      _accidentService.onAccidentDetected = _handleAccidentDetection;
-      _accidentService.startMonitoring();
+        // Show error and navigate back to home
+        _showConnectionErrorAndNavigateHome();
+        return; // Exit early
+      }
 
       // Rebind to WiFi after API call
       await NetworkBinder.bindWifi();
     } catch (e) {
       debugPrint('Exception creating driving history: $e');
-      // Make sure we rebind even if there's an error
-      await NetworkBinder.bindWifi();
-      // Still track locally even if backend fails
-      _currentDrivingHistory = newDrivingHistory;
+      // Cancel monitoring since we had an exception
+      _isMonitoring = false;
 
-      // Start accident detection even if history creation failed
-      _accidentService.onAccidentDetected = _handleAccidentDetection;
-      _accidentService.startMonitoring();
+      // Show error and navigate back to home
+      _showConnectionErrorAndNavigateHome();
+      return; // Exit early
     }
 
     notifyListeners();
@@ -647,6 +653,29 @@ class MonitoringViewModel extends ChangeNotifier {
     );
 
     notifyListeners();
+  }
+
+  // Add this method
+  void addConnectionErrorListener(VoidCallback listener) {
+    _connectionErrorListeners.add(listener);
+  }
+
+  // Add this method
+  void removeConnectionErrorListener(VoidCallback listener) {
+    _connectionErrorListeners.remove(listener);
+  }
+
+  // Replace your existing _showConnectionErrorAndNavigateHome method with this:
+  void _showConnectionErrorAndNavigateHome() {
+    // Notify all registered listeners about the connection error
+    for (final listener in _connectionErrorListeners) {
+      listener();
+    }
+
+    // If no listeners handled it, fall back to direct navigation
+    if (_connectionErrorListeners.isEmpty) {
+      router.go('/');
+    }
   }
 
   // Add the behavior reporting function
@@ -898,22 +927,6 @@ class MonitoringViewModel extends ChangeNotifier {
     );
   }
 
-  // Helper to get alert message based on behavior type
-  String _getAlertMessage(String behaviourType) {
-    switch (behaviourType.toUpperCase()) {
-      case 'DROWSINESS':
-        return 'You appear to be drowsy. Please consider taking a break or pulling over safely.';
-      case 'DISTRACTION':
-        return 'Your attention seems diverted from the road. Please focus on driving safely.';
-      case 'INTOXICATION':
-        return 'Warning: Signs of impairment detected. Please do not drive if you are intoxicated.';
-      case 'PHONE USAGE':
-        return 'Phone usage while driving is dangerous. Please focus on the road.';
-      default:
-        return 'Risky driving behavior detected. Please drive safely.';
-    }
-  }
-
   // Define default audio files (same as in ExtraConfigView)
   final Map<String, dynamic> defaultAudioFiles = {
     'Drowsiness': {
@@ -1052,7 +1065,7 @@ class MonitoringViewModel extends ChangeNotifier {
           accident: accident,
           severity: severity,
           force: force,
-          onDismiss: () {
+          onDismiss: () async {
             Navigator.of(dialogContext).pop();
           },
           onEmergencyCall: () {
@@ -1065,22 +1078,27 @@ class MonitoringViewModel extends ChangeNotifier {
   }
 
   // Method to handle emergency calls
-  void _triggerEmergencyCall(Accident accident) {
+  void _triggerEmergencyCall(Accident accident) async {
     // This would be implemented to call emergency services
     debugPrint('Emergency call triggered to: ${accident.contactNum}');
     // Typically you'd use url_launcher package to initiate a call
 
+    // await FlutterPhoneDirectCaller.callNumber(accident.contactNum);
+    final Uri launchUri = Uri(scheme: 'tel', path: accident.contactNum);
+    await launchUrl(launchUri);
+
     // Update the contact time after an emergency call is made
-    final updatedAccident = Accident(
-      accidentId: accident.accidentId,
-      detectedTime: accident.detectedTime,
-      location: accident.location,
-      contactNum: accident.contactNum,
-      contactTime: DateTime.now(), // Update contact time
-    );
+    // final updatedAccident = Accident(
+    //   accidentId: accident.accidentId,
+    //   detectedTime: accident.detectedTime,
+    //   location: accident.location,
+    //   contactNum: accident.contactNum,
+    //   contactTime: DateTime.now(), // Update contact time
+    // );
 
     // Update in the backend
-    // reportAccident(updatedAccident);
+    // addAccident(updatedAccident);
+    stopMonitoring();
   }
 
   @override
@@ -1209,7 +1227,7 @@ class _BehaviorAlertDialogState extends State<_BehaviorAlertDialog> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: alertColor.withOpacity(0.1),
+                  color: alertColor.withValues(alpha: 0.1),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -1220,7 +1238,7 @@ class _BehaviorAlertDialogState extends State<_BehaviorAlertDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: alertColor.withOpacity(0.2),
+                        color: alertColor.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(alertIcon, color: alertColor, size: 24),
@@ -1354,7 +1372,7 @@ class _AccidentAlertDialogState extends State<_AccidentAlertDialog> {
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (!_countdownPaused) {
         setState(() {
           _secondsRemaining--;
@@ -1363,6 +1381,11 @@ class _AccidentAlertDialogState extends State<_AccidentAlertDialog> {
         if (_secondsRemaining <= 0) {
           _timer?.cancel();
           widget.onDismiss();
+          final Uri launchUri = Uri(
+            scheme: 'tel',
+            path: widget.accident.contactNum,
+          );
+          await launchUrl(launchUri);
         }
       }
     });
@@ -1424,7 +1447,7 @@ class _AccidentAlertDialogState extends State<_AccidentAlertDialog> {
         backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         contentPadding: EdgeInsets.zero,
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1432,7 +1455,7 @@ class _AccidentAlertDialogState extends State<_AccidentAlertDialog> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: alertColor.withOpacity(0.1),
+                  color: alertColor.withValues(alpha: 0.1),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -1443,7 +1466,7 @@ class _AccidentAlertDialogState extends State<_AccidentAlertDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: alertColor.withOpacity(0.2),
+                        color: alertColor.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

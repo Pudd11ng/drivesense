@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 import 'package:drivesense/ui/core/themes/colors.dart';
+import 'package:drivesense/ui/user_management/registration/register_view.dart';
+import 'package:drivesense/ui/user_management/forgot_password/forgot_password_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -127,9 +129,12 @@ class _LoginViewState extends State<LoginView> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () {
-                            //TODO: Navigate to the password recovery screen
-                          },
+                          onPressed:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ForgotPasswordView(),
+                                ),
+                              ),
                           child: Text(
                             'Forgot password?',
                             style: Theme.of(context).textTheme.bodySmall,
@@ -249,9 +254,12 @@ class _LoginViewState extends State<LoginView> {
                       children: [
                         const Text('Don\'t have an account?'),
                         TextButton(
-                          onPressed: () {
-                            context.go('/register');
-                          },
+                          onPressed:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => RegisterView(),
+                                ),
+                              ),
                           child: Text(
                             'Sign Up',
                             style: Theme.of(
@@ -284,7 +292,7 @@ class _LoginViewState extends State<LoginView> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      
+
       if (success && mounted) {
         if (viewModel.needsProfileCompletion) {
           context.go('/profile_completion');

@@ -54,7 +54,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
             appBar: AppHeaderBar(
               title: 'Driving Analysis',
               leading: const Icon(Icons.arrow_back),
-              onLeadingPressed: () => context.pop(),
+              onLeadingPressed: () => context.go('/driving_history'),
             ),
             body: Center(
               child: Text(
@@ -71,7 +71,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
           appBar: AppHeaderBar(
             title: 'Driving Analysis',
             leading: const Icon(Icons.arrow_back),
-            onLeadingPressed: () => context.pop(),
+            onLeadingPressed: () => context.go('/driving_history'),
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,7 +710,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                                       style: TextStyle(color: textColor),
                                     ),
                                     Text(
-                                      'Response Time: ${accident.contactTime}',
+                                      'Response Time: ${viewModel.formatDate(accident.contactTime)}',
                                       style: TextStyle(color: textColor),
                                     ),
                                   ],
@@ -769,10 +769,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('Timeline Graph', accentColor, textColor),
-          _buildTimelineGraph(history, events, isDarkMode),
-
-          const SizedBox(height: 24),
+          if (events.isNotEmpty) ...[
+            _buildSectionHeader('Timeline Graph', accentColor, textColor),
+            _buildTimelineGraph(history, events, isDarkMode),
+            const SizedBox(height: 24),
+          ],
 
           _buildSectionHeader('Event Timeline', accentColor, textColor),
           events.isEmpty
@@ -895,26 +896,25 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     List<Map<String, dynamic>> events,
     bool isDarkMode,
   ) {
-    final cardColor = isDarkMode 
-        ? AppColors.darkGrey.withValues(alpha: 0.3) 
-        : AppColors.white;
+    final cardColor =
+        isDarkMode
+            ? AppColors.darkGrey.withValues(alpha: 0.3)
+            : AppColors.white;
     final accentColor = isDarkMode ? AppColors.blue : AppColors.darkBlue;
-    final gridColor = isDarkMode 
-        ? AppColors.greyBlue.withValues(alpha: 0.15)
-        : AppColors.grey.withValues(alpha: 0.15);
+    final gridColor =
+        isDarkMode
+            ? AppColors.greyBlue.withValues(alpha: 0.15)
+            : AppColors.grey.withValues(alpha: 0.15);
     final labelColor = isDarkMode ? AppColors.greyBlue : AppColors.grey;
 
     // Calculate total duration in minutes for the X axis
-    final totalDuration = history.endTime.difference(history.startTime).inMinutes;
-
-    if (totalDuration <= 0 || events.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final totalDuration =
+        history.endTime.difference(history.startTime).inMinutes;
 
     // Create reference times for the x-axis (actual times)
-    final startTimeInMinutes = 
+    final startTimeInMinutes =
         history.startTime.hour * 60 + history.startTime.minute;
-    
+
     // Group events by actual time and count occurrences
     final Map<int, int> eventCountsByMinute = {};
     int maxCount = 0;
@@ -922,10 +922,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     for (var event in events) {
       final eventTime = event['time'] as DateTime;
       final eventAbsoluteMinute = eventTime.hour * 60 + eventTime.minute;
-      
+
       // Increment count for this minute
-      eventCountsByMinute[eventAbsoluteMinute] = (eventCountsByMinute[eventAbsoluteMinute] ?? 0) + 1;
-      
+      eventCountsByMinute[eventAbsoluteMinute] =
+          (eventCountsByMinute[eventAbsoluteMinute] ?? 0) + 1;
+
       // Track max count for Y-axis scaling
       if (eventCountsByMinute[eventAbsoluteMinute]! > maxCount) {
         maxCount = eventCountsByMinute[eventAbsoluteMinute]!;
@@ -933,28 +934,37 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
     }
 
     // Create spots for the chart using actual time values (minutes from midnight)
-    final spots = eventCountsByMinute.entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.toDouble());
-    }).toList();
-    
+    final spots =
+        eventCountsByMinute.entries.map((entry) {
+          return FlSpot(entry.key.toDouble(), entry.value.toDouble());
+        }).toList();
+
     // Sort by X value (time)
     spots.sort((a, b) => a.x.compareTo(b.x));
 
     // Calculate appropriate max Y value
     final maxY = maxCount > 3 ? (maxCount + 1).toDouble() : 3.0;
-    
+
     // Calculate min and max X values for the chart (in minutes from midnight)
-    final minX = (startTimeInMinutes - 5).toDouble(); // Start 5 min before first event
-    final maxX = (startTimeInMinutes + totalDuration + 5).toDouble(); // End 5 min after last event
+    // Ensure a minimum 10-minute span for the x-axis
+    final effectiveDuration = totalDuration < 10 ? 10 : totalDuration;
+
+    // If total duration is less than 10 minutes, center the events in a 10-minute window
+    final additionalMinutes = effectiveDuration - totalDuration;
+    final minX = (startTimeInMinutes - (5 + additionalMinutes / 2)).toDouble();
+    final maxX =
+        (startTimeInMinutes + totalDuration + (5 + additionalMinutes / 2))
+            .toDouble();
 
     return Card(
       elevation: isDarkMode ? 0 : 2,
       color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isDarkMode
-            ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
-            : BorderSide.none,
+        side:
+            isDarkMode
+                ? BorderSide(color: AppColors.greyBlue.withValues(alpha: 0.2))
+                : BorderSide.none,
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
@@ -984,7 +994,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                         return touchedSpots.map((touchedSpot) {
                           final minutesFromMidnight = touchedSpot.x.toInt();
                           final count = touchedSpot.y.toInt();
-                          
+
                           // Convert back to DateTime for display
                           final hour = minutesFromMidnight ~/ 60;
                           final minute = minutesFromMidnight % 60;
@@ -995,7 +1005,7 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                             hour,
                             minute,
                           );
-                          
+
                           return LineTooltipItem(
                             '${DateFormat('h:mm a').format(time)}: $count ${count == 1 ? 'event' : 'events'}',
                             TextStyle(
@@ -1033,15 +1043,12 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                         getTitlesWidget: (value, meta) {
                           // Only show integer values
                           if (value % 1 != 0) return const SizedBox();
-                          
+
                           return SideTitleWidget(
                             meta: meta,
                             child: Text(
                               value.toInt().toString(),
-                              style: TextStyle(
-                                color: labelColor,
-                                fontSize: 10,
-                              ),
+                              style: TextStyle(color: labelColor, fontSize: 10),
                             ),
                           );
                         },
@@ -1055,11 +1062,11 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                         getTitlesWidget: (value, meta) {
                           // Only show at 5-minute intervals
                           if (value % 5 != 0) return const SizedBox();
-                          
+
                           final absoluteMinute = value.toInt();
                           final hour = absoluteMinute ~/ 60;
                           final minute = absoluteMinute % 60;
-                          
+
                           // Create a datetime for formatting
                           final time = DateTime(
                             history.startTime.year,
@@ -1068,15 +1075,12 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                             hour,
                             minute,
                           );
-                          
+
                           return SideTitleWidget(
                             meta: meta,
                             child: Text(
                               DateFormat('h:mm').format(time),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: labelColor,
-                              ),
+                              style: TextStyle(fontSize: 10, color: labelColor),
                             ),
                           );
                         },
@@ -1092,9 +1096,10 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                   borderData: FlBorderData(
                     show: true,
                     border: Border.all(
-                      color: isDarkMode
-                          ? AppColors.greyBlue.withValues(alpha: 0.2)
-                          : AppColors.grey.withValues(alpha: 0.2),
+                      color:
+                          isDarkMode
+                              ? AppColors.greyBlue.withValues(alpha: 0.2)
+                              : AppColors.grey.withValues(alpha: 0.2),
                     ),
                   ),
                   minX: minX,
@@ -1115,7 +1120,8 @@ class _DrivingAnalysisViewState extends State<DrivingAnalysisView>
                             radius: 5,
                             color: accentColor,
                             strokeWidth: 2,
-                            strokeColor: isDarkMode ? Colors.black : Colors.white,
+                            strokeColor:
+                                isDarkMode ? Colors.black : Colors.white,
                           );
                         },
                       ),

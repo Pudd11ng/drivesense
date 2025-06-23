@@ -53,10 +53,23 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
 
     // Add subscription to behavior updates
     _subscribeToBehaviorUpdates();
+
+    // Listen for connection errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = Provider.of<MonitoringViewModel>(
+        context,
+        listen: false,
+      );
+      viewModel.addConnectionErrorListener(_handleConnectionError);
+    });
   }
 
   @override
   void dispose() {
+    // Clean up connection error listener
+    final viewModel = Provider.of<MonitoringViewModel>(context, listen: false);
+    viewModel.removeConnectionErrorListener(_handleConnectionError);
+
     // Cancel the behavior subscription
     _behaviorSubscription?.cancel();
 
@@ -181,7 +194,6 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
 
     try {
       // Format for MJPEG stream
-      final deviceId = _device!.deviceSSID.replaceAll("DriveSense_Camera_", "");
       debugPrint('Connecting to MJPEG stream at: $_streamUrl');
 
       _startStream();
@@ -272,6 +284,38 @@ class _DeviceViewState extends State<DeviceView> with WidgetsBindingObserver {
     // Reset behavior subscription when monitoring state changes
     _behaviorSubscription?.cancel();
     _subscribeToBehaviorUpdates();
+  }
+
+  void _showConnectionErrorDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Connection Error'),
+            content: const Text(
+              'Unable to start monitoring due to internet connection issues. '
+              'Please check your connection and try again later.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  // Use the DeviceView's navigation method for proper cleanup
+                  _navigateAway(context, '/');
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Handle connection errors
+  void _handleConnectionError() {
+    if (mounted) {
+      _showConnectionErrorDialog(context);
+    }
   }
 
   @override

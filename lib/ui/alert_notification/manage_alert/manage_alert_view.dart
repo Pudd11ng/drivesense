@@ -386,7 +386,7 @@ class _ManageAlertViewState extends State<ManageAlertView> {
 
                         // Navigate to config screen
                         Future.delayed(const Duration(milliseconds: 500), () {
-                          context.go('/extra_config/?alertTypeName=$alertName');
+                          context.go('/extra_config/$alertName');
                         });
                         return;
                       }
@@ -429,7 +429,7 @@ class _ManageAlertViewState extends State<ManageAlertView> {
                             borderRadius: BorderRadius.circular(6),
                             onTap: () {
                               context.go(
-                                '/extra_config/?alertTypeName=${alert['name']}',
+                                '/extra_config/${alert['name']}',
                               );
                             },
                             child: Row(

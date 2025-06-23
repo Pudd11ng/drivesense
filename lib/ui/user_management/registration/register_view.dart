@@ -1,3 +1,4 @@
+import 'package:drivesense/ui/user_management/login/login_view.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -268,9 +269,12 @@ class _RegisterViewState extends State<RegisterView> {
                       children: [
                         const Text('Already have an account?'),
                         TextButton(
-                          onPressed: () {
-                            context.go('/login');
-                          },
+                          onPressed:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => LoginView(),
+                                ),
+                              ),
                           child: Text(
                             'Sign In',
                             style: Theme.of(

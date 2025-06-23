@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
 import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
 import 'package:drivesense/ui/driving_history_analysis/view_model/analysis_view_model.dart';
-import 'package:drivesense/ui/driving_history_analysis/analysis/driving_analysis_view.dart';
+// import 'package:drivesense/ui/driving_history_analysis/analysis/driving_analysis_view.dart';
 import 'package:drivesense/domain/models/driving_history/driving_history.dart';
 import 'package:drivesense/domain/models/accident/accident.dart';
 import 'package:drivesense/domain/models/risky_behaviour/risky_behaviour.dart';
@@ -532,14 +532,8 @@ class _DrivingHistoryViewState extends State<DrivingHistoryView> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(10),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => DrivingAnalysisView(
-                                drivingHistoryId: history.drivingHistoryId!,
-                              ),
-                        ),
+                     context.go(
+                        '/driving_analysis/${history.drivingHistoryId}',
                       );
                     },
                     splashColor: Colors.white.withValues(alpha: 0.1),

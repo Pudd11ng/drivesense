@@ -6,6 +6,7 @@ import 'package:drivesense/domain/models/device/device.dart';
 import 'package:drivesense/ui/core/widgets/app_bottom_navbar.dart';
 import 'package:drivesense/ui/core/widgets/app_header_bar.dart';
 import 'package:drivesense/ui/core/themes/colors.dart';
+import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -64,20 +65,17 @@ class _HomeViewState extends State<HomeView> {
               children: [
                 // Feature buttons row
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 24),
-                      child: _buildFeatureButton(
-                        context: context,
-                        icon: Icons.history,
-                        label: 'Driving\nHistory',
-                        isDarkMode: isDarkMode,
-                        onTap: () {
-                          context.go('/driving_history');
-                        },
-                      ),
+                    _buildFeatureButton(
+                      context: context,
+                      icon: Icons.history,
+                      label: 'Driving\nHistory',
+                      isDarkMode: isDarkMode,
+                      onTap: () {
+                        context.go('/driving_history');
+                      },
                     ),
                     _buildFeatureButton(
                       context: context,
@@ -86,6 +84,62 @@ class _HomeViewState extends State<HomeView> {
                       isDarkMode: isDarkMode,
                       onTap: () {
                         context.go('/manage_alert');
+                      },
+                    ),
+                    _buildFeatureButton(
+                      context: context,
+                      icon: Icons.contact_emergency,
+                      label: 'Emergency\nContacts',
+                      isDarkMode: isDarkMode,
+                      onTap: () {
+                        context.go('/emergency_contact');
+                      },
+                    ),
+
+                    // Add as the last button in the row
+                    Consumer<UserManagementViewModel>(
+                      builder: (context, userViewModel, _) {
+                        return Stack(
+                          children: [
+                            _buildFeatureButton(
+                              context: context,
+                              icon: Icons.notifications,
+                              label: 'Notifi-\ncations',
+                              isDarkMode: isDarkMode,
+                              onTap: () {
+                                context.go('/notifications');
+                              },
+                            ),
+                            if (userViewModel.unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 18,
+                                    minHeight: 18,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      userViewModel.unreadCount > 99
+                                          ? '99+'
+                                          : '${userViewModel.unreadCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
                       },
                     ),
                   ],
@@ -201,20 +255,21 @@ class _HomeViewState extends State<HomeView> {
     bool isDarkMode,
   ) {
     final isConnected = viewModel.currentWifiSSID == device.deviceSSID;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isConnected
-              ? (isDarkMode 
-                  ? [AppColors.blue, Color(0xFF1E3A5F)]
-                  : [AppColors.blue, AppColors.darkBlue])
-              : (isDarkMode
-                  ? [Color(0xFF2D3748), Color(0xFF1A202C)]
-                  : [Color(0xFF64748B), Color(0xFF334155)]),
+          colors:
+              isConnected
+                  ? (isDarkMode
+                      ? [AppColors.blue, Color(0xFF1E3A5F)]
+                      : [AppColors.blue, AppColors.darkBlue])
+                  : (isDarkMode
+                      ? [Color(0xFF2D3748), Color(0xFF1A202C)]
+                      : [Color(0xFF64748B), Color(0xFF334155)]),
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -255,7 +310,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
-              
+
               // Content
               Padding(
                 padding: const EdgeInsets.all(18.0),
@@ -272,13 +327,18 @@ class _HomeViewState extends State<HomeView> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isConnected ? Colors.green : Colors.orange,
-                            boxShadow: isConnected ? [
-                              BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              )
-                            ] : null,
+                            boxShadow:
+                                isConnected
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.green.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                    : null,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -297,7 +357,8 @@ class _HomeViewState extends State<HomeView> {
                             Icons.more_vert,
                             color: AppColors.white,
                           ),
-                          color: isDarkMode ? AppColors.darkGrey : AppColors.white,
+                          color:
+                              isDarkMode ? AppColors.darkGrey : AppColors.white,
                           elevation: 3,
                           position: PopupMenuPosition.under,
                           shape: RoundedRectangleBorder(
@@ -306,64 +367,71 @@ class _HomeViewState extends State<HomeView> {
                           onSelected: (value) {
                             if (value == 'edit') {
                               _showEditDeviceDialog(
-                                context, device, viewModel, isDarkMode,
+                                context,
+                                device,
+                                viewModel,
+                                isDarkMode,
                               );
                             } else if (value == 'remove') {
                               _showRemoveDeviceDialog(
-                                context, device, viewModel, isDarkMode,
+                                context,
+                                device,
+                                viewModel,
+                                isDarkMode,
                               );
                             }
                           },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.edit_outlined,
-                                    size: 18,
-                                    color:
-                                        isDarkMode
-                                            ? AppColors.white
-                                            : AppColors.darkBlue,
+                          itemBuilder:
+                              (context) => [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                        color:
+                                            isDarkMode
+                                                ? AppColors.white
+                                                : AppColors.darkBlue,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Edit Name',
+                                        style: TextStyle(
+                                          color:
+                                              isDarkMode
+                                                  ? AppColors.white
+                                                  : AppColors.darkBlue,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Edit Name',
-                                    style: TextStyle(
-                                      color:
-                                          isDarkMode
-                                              ? AppColors.white
-                                              : AppColors.darkBlue,
-                                    ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'remove',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Remove Device',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'remove',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: Colors.red,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Remove Device',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                ),
+                              ],
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 14),
-                    
+
                     // Device name and model section
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,17 +476,19 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Bottom info section
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12, 
+                        horizontal: 12,
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.blackTransparent.withValues(alpha: 0.15),
+                        color: AppColors.blackTransparent.withValues(
+                          alpha: 0.15,
+                        ),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -431,7 +501,9 @@ class _HomeViewState extends State<HomeView> {
                                 Text(
                                   'DEVICE ID',
                                   style: TextStyle(
-                                    color: AppColors.white.withValues(alpha: 0.6),
+                                    color: AppColors.white.withValues(
+                                      alpha: 0.6,
+                                    ),
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -440,7 +512,9 @@ class _HomeViewState extends State<HomeView> {
                                 Text(
                                   device.deviceSSID,
                                   style: TextStyle(
-                                    color: AppColors.white.withValues(alpha: 0.9),
+                                    color: AppColors.white.withValues(
+                                      alpha: 0.9,
+                                    ),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -450,17 +524,18 @@ class _HomeViewState extends State<HomeView> {
                               ],
                             ),
                           ),
-                          
+
                           // Action button
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14, 
+                              horizontal: 14,
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: isConnected 
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : AppColors.white.withValues(alpha: 0.15),
+                              color:
+                                  isConnected
+                                      ? Colors.green.withValues(alpha: 0.2)
+                                      : AppColors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(

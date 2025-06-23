@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import 'package:drivesense/constants/emergencyNumbers.dart';
 import 'package:drivesense/domain/models/accident/accident.dart';
+import 'package:drivesense/ui/user_management/view_model/user_management_view_model.dart';
 
 enum AccidentSeverity {
   minor, // Small impact, possibly a hard braking
@@ -28,12 +31,15 @@ class AccidentDetectionService {
 
   // Detection configurations
   bool _isMonitoring = false;
+  bool _isConfirmingImpact = false;
+
   bool get isMonitoring => _isMonitoring;
+  bool get isConfirmingImpact => _isConfirmingImpact;
 
   // Detection thresholds (in G's, where 1G = 9.8 m/s²)
-  double _minorThreshold = 1.0; // ~2G force (moderate braking)
-  double _moderateThreshold = 4.0; // ~4G force (hard collision)
-  double _severeThreshold = 6.0; // ~6G force (severe impact)
+  double _minorThreshold = 2.0; // ~5G force (moderate braking)
+  double _moderateThreshold = 5.0; // ~30G force (hard collision)
+  double _severeThreshold = 6.0; // 50G force (severe impact)
 
   // Time window for peak detection (in milliseconds)
   final int _peakDetectionWindow = 200;
@@ -49,10 +55,33 @@ class AccidentDetectionService {
 
   // Cooldown to prevent multiple detections for the same event
   bool _isInCooldown = false;
-  final Duration _cooldownPeriod = Duration(seconds: 10);
+  bool get isInCooldown => _isInCooldown;
+
+  final Duration _cooldownPeriod = Duration(seconds: 60);
 
   // Emergency contact information
-  String _emergencyContact = "911"; // Default emergency number
+  String _emergencyContact = "999"; // Default emergency number
+
+  void initialize(BuildContext context) {
+    try {
+      final viewModel = Provider.of<UserManagementViewModel>(
+        context,
+        listen: false,
+      );
+
+      // Check if user profile is loaded
+      if (viewModel.user.country.isNotEmpty) {
+        _emergencyContact = emergencyNumbers[viewModel.user.country] ?? "999";
+      } else {
+        // Load user profile if needed
+        viewModel.loadUserProfile().then((_) {
+          _emergencyContact = emergencyNumbers[viewModel.user.country] ?? "999";
+        });
+      }
+    } catch (e) {
+      debugPrint('Error initializing emergency contact: $e');
+    }
+  }
 
   void setEmergencyContact(String contactNum) {
     _emergencyContact = contactNum;
@@ -148,68 +177,74 @@ class AccidentDetectionService {
   }
 
   Future<void> _confirmImpact() async {
-    if (!_isPotentialImpact || _isInCooldown) return;
+    // Check both cooldown and if we're already confirming an impact
+    if (!_isPotentialImpact || _isInCooldown || _isConfirmingImpact) return;
 
-    // Determine severity based on peak acceleration
-    AccidentSeverity severity;
-    if (_peakAcceleration >= _severeThreshold) {
-      severity = AccidentSeverity.severe;
-    } else if (_peakAcceleration >= _moderateThreshold) {
-      severity = AccidentSeverity.moderate;
-    } else {
-      severity = AccidentSeverity.minor;
-    }
-
-    // Get current location
-    String locationStr = "Unknown location";
-    try {
-      // Check for location permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission != LocationPermission.denied &&
-          permission != LocationPermission.deniedForever) {
-        Position position = await Geolocator.getCurrentPosition();
-        locationStr = "${position.latitude},${position.longitude}";
-        debugPrint('Accident location: $locationStr');
-      }
-    } catch (e) {
-      debugPrint('Error getting location: $e');
-    }
-
-    // Create accident object
-    final accident = Accident(
-      accidentId:
-          DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID
-      detectedTime: DateTime.now(),
-      location: locationStr,
-      contactNum: _emergencyContact,
-      contactTime:
-          DateTime.now(), // Will be updated when contact is actually made
-    );
-
-    // Notify listeners
-    if (onAccidentDetected != null) {
-      onAccidentDetected!(accident, severity, _peakAcceleration);
-    }
-
-    // Enter cooldown period to avoid multiple detections
+    // Set confirming flag immediately to prevent multiple entries
+    _isConfirmingImpact = true;
+    // Also set cooldown flag immediately
     _isInCooldown = true;
-    debugPrint(
-      'Accident detected! Severity: ${severity.name}, Force: ${_peakAcceleration.toStringAsFixed(2)}G',
-    );
 
-    // Reset tracking variables
-    _isPotentialImpact = false;
-    _peakAcceleration = 0;
-    _lastPeakTime = null;
+    // Now proceed with the accident confirmation process
+    try {
+      // Determine severity based on peak acceleration
+      AccidentSeverity severity;
+      if (_peakAcceleration >= _severeThreshold) {
+        severity = AccidentSeverity.severe;
+      } else if (_peakAcceleration >= _moderateThreshold) {
+        severity = AccidentSeverity.moderate;
+      } else {
+        severity = AccidentSeverity.minor;
+      }
 
-    // Clear cooldown after period
-    Future.delayed(_cooldownPeriod, () {
-      _isInCooldown = false;
-    });
+      // Get current location
+      String locationStr = "Unknown location";
+      try {
+        // Location permission checks and position retrieval...
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever) {
+          Position position = await Geolocator.getCurrentPosition();
+          locationStr = "${position.latitude},${position.longitude}";
+          debugPrint('Accident location: $locationStr');
+        }
+      } catch (e) {
+        debugPrint('Error getting location: $e');
+      }
+
+      // Create accident object
+      final accident = Accident(
+        accidentId: DateTime.now().millisecondsSinceEpoch.toString(),
+        detectedTime: DateTime.now(),
+        location: locationStr,
+        contactNum: _emergencyContact,
+        contactTime: DateTime.now(),
+      );
+
+      // Notify listeners
+      if (onAccidentDetected != null) {
+        onAccidentDetected!(accident, severity, _peakAcceleration);
+      }
+
+      debugPrint(
+        'Accident detected! Severity: ${severity.name}, Force: ${_peakAcceleration.toStringAsFixed(2)}G',
+      );
+    } finally {
+      // Reset tracking variables
+      _isPotentialImpact = false;
+      _peakAcceleration = 0;
+      _lastPeakTime = null;
+      _isConfirmingImpact = false; // Reset confirming flag
+
+      // Keep cooldown active for the full period
+      Future.delayed(_cooldownPeriod, () {
+        _isInCooldown = false;
+      });
+    }
   }
 
   // Method to adjust thresholds if needed

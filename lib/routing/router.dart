@@ -6,6 +6,8 @@ import 'package:drivesense/ui/user_management/registration/register_view.dart';
 import 'package:drivesense/ui/user_management/login/login_view.dart';
 import 'package:drivesense/ui/user_management/home/home_view.dart';
 import 'package:drivesense/ui/user_management/home/settings_view.dart';
+import 'package:drivesense/ui/user_management/forgot_password/forgot_password_view.dart';
+import 'package:drivesense/ui/user_management/reset_password/reset_password_view.dart';
 import 'package:drivesense/ui/alert_notification/manage_alert/manage_alert_view.dart';
 import 'package:drivesense/ui/alert_notification/alert/extra_config_view.dart';
 import 'package:drivesense/ui/driving_history_analysis/driving_history/driving_history_view.dart';
@@ -14,6 +16,9 @@ import 'package:drivesense/ui/monitoring_detection/connect_device/connect_device
 import 'package:drivesense/ui/monitoring_detection/device/device_view.dart';
 import 'package:drivesense/ui/user_management/profile/profile_completion_view.dart';
 import 'package:drivesense/ui/user_management/profile/profile_view.dart';
+import 'package:drivesense/ui/user_management/emergency_contact/emergency_contact_view.dart';
+import 'package:drivesense/ui/user_management/emergency_contact/invitation_process_view.dart';
+import 'package:drivesense/ui/user_management/notification/notification_view.dart';
 
 // Create a custom GoRouter observer
 class GoRouterObserver extends NavigatorObserver {
@@ -30,23 +35,66 @@ final GoRouter router = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: Routes.home,
   observers: [GoRouterObserver()],
-  redirect: (BuildContext context, GoRouterState state) async {
-    final isAuth = await _authService.isAuthenticated();
-    final publicPaths = [Routes.login, Routes.register];
-    final isGoingToPublicRoute = publicPaths.contains(state.path);
-    
-    if (!isAuth && !isGoingToPublicRoute) {
-      return Routes.login;
-    } else if (isAuth && isGoingToPublicRoute) {
-      return Routes.home;
-    }
-    return null;
-  },
-  
+
+  // redirect: (BuildContext context, GoRouterState state) async {
+  //   final isAuth = await _authService.isAuthenticated();
+
+  //   // Define patterns for public routes (replace parameters with wildcards)
+  //   final publicPatterns = [
+  //     RegExp(r'^/login$'),
+  //     RegExp(r'^/register$'),
+  //     RegExp(r'^/forgot_password$'),
+  //     RegExp(r'^/reset_password/[^/]+$'),
+  //   ];
+
+  //   final isPublicRoute = publicPatterns.any((pattern) => pattern.hasMatch(state.path ?? ''));
+
+  //   debugPrint('Path: ${state.path}, isAuth: $isAuth, isPublic: $isPublicRoute');
+
+  //   if (!isAuth && !isPublicRoute) {
+  //     return Routes.login;
+  //   } else if (isAuth && isPublicRoute) {
+  //     return Routes.home;
+  //   }
+
+  //   return null;
+  // },
   routes: [
     GoRoute(path: Routes.login, builder: (context, state) => LoginView()),
     GoRoute(path: Routes.register, builder: (context, state) => RegisterView()),
     GoRoute(path: Routes.home, builder: (context, state) => HomeView()),
+    GoRoute(
+      path: Routes.forgotPassword,
+      builder: (context, state) => const ForgotPasswordView(),
+    ),
+    GoRoute(
+      path: Routes.resetPassword,
+      builder: (context, state) {
+        final token = state.uri.queryParameters['token'];
+        if (token != null) {
+          return ResetPasswordView(token: token);
+        } else {
+          return const Scaffold(
+            body: Center(child: Text('Invalid reset password link')),
+          );
+        }
+      },
+
+      // ResetPasswordView(
+      //   token: state.pathParameters['token'] ?? '',
+      // ),
+
+      //           builder: (context, state) {
+      //   final code = state.uri.queryParameters['code'];
+
+      //   if (code != null) {
+      //     return InvitationProcessView(inviteCode: code);
+      //   }
+      //   return const Scaffold(
+      //     body: Center(child: Text('Invalid invitation link')),
+      //   );
+      // },
+    ),
     GoRoute(path: Routes.settings, builder: (context, state) => SettingsView()),
     GoRoute(
       path: Routes.connectDevice,
@@ -54,12 +102,9 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: Routes.device,
-      pageBuilder: (context, state) {
-        final deviceId = state.pathParameters['deviceId'];
-        return MaterialPage(
-          child: DeviceView(deviceId: deviceId),
-        );
-      },
+      builder:
+          (context, state) =>
+              DeviceView(deviceId: state.pathParameters['deviceId']),
     ),
     GoRoute(path: Routes.profile, builder: (context, state) => ProfileView()),
     GoRoute(
@@ -74,7 +119,7 @@ final GoRouter router = GoRouter(
       path: Routes.extraConfig,
       builder:
           (context, state) => ExtraConfigView(
-            alertTypeName: state.uri.queryParameters['alertTypeName']!,
+            alertTypeName: state.pathParameters['alertTypeName']!,
           ),
     ),
     GoRoute(
@@ -85,8 +130,30 @@ final GoRouter router = GoRouter(
       path: Routes.drivingAnalysis,
       builder:
           (context, state) => DrivingAnalysisView(
-            drivingHistoryId: state.uri.queryParameters['id']!,
+            drivingHistoryId: state.pathParameters['drivingHistoryId']!,
           ),
+    ),
+    GoRoute(
+      path: Routes.emergencyContact,
+      builder: (context, state) => const EmergencyContactView(),
+    ),
+
+    GoRoute(
+      path: Routes.emergencyContactInvitation,
+      builder: (context, state) {
+        final code = state.uri.queryParameters['code'];
+
+        if (code != null) {
+          return InvitationProcessView(inviteCode: code);
+        }
+        return const Scaffold(
+          body: Center(child: Text('Invalid invitation link')),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationView(),
     ),
   ],
 );

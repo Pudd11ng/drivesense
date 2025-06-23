@@ -5,22 +5,25 @@ class AuthService {
   String? _authToken;
   DateTime? _tokenExpiry;
   final _storage = const FlutterSecureStorage();
+  String? _cachedToken;
 
   /// Gets the authentication token, loading from secure storage if needed
   /// Returns null if token is expired
   Future<String?> getToken() async {
-    // If token is not in memory, try to load from storage
-    if (_authToken == null) {
-      await _loadTokenFromStorage();
+    if (_cachedToken != null) {
+      return _cachedToken;
     }
-    
+
+    // If token is not in memory, try to load from storage
+    await _loadTokenFromStorage();
+
     // Check if token is expired
     if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
       debugPrint('Token expired, clearing credentials');
       await clearToken();
       return null;
     }
-    
+
     return _authToken;
   }
 
@@ -28,7 +31,8 @@ class AuthService {
   Future<void> setToken(String token, {int expiresInSeconds = 604800}) async {
     _authToken = token;
     _tokenExpiry = DateTime.now().add(Duration(seconds: expiresInSeconds));
-    
+    _cachedToken = token;
+
     await _storage.write(key: 'auth_token', value: token);
     await _storage.write(
       key: 'token_expiry',
@@ -40,15 +44,16 @@ class AuthService {
   Future<void> clearToken() async {
     _authToken = null;
     _tokenExpiry = null;
+    _cachedToken = null;
     await _storage.delete(key: 'auth_token');
     await _storage.delete(key: 'token_expiry');
   }
-  
+
   /// Load token and expiry from secure storage
   Future<void> _loadTokenFromStorage() async {
     _authToken = await _storage.read(key: 'auth_token');
     final expiryStr = await _storage.read(key: 'token_expiry');
-    
+
     if (expiryStr != null) {
       try {
         _tokenExpiry = DateTime.parse(expiryStr);
@@ -58,10 +63,15 @@ class AuthService {
       }
     }
   }
-  
+
   /// Check if user is authenticated with a valid token
   Future<bool> isAuthenticated() async {
     final token = await getToken();
     return token != null;
+  }
+
+  // Synchronous method to check auth status
+  bool isAuthenticatedSync() {
+    return _cachedToken != null;
   }
 }

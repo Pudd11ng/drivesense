@@ -10,7 +10,6 @@ import 'package:drivesense/ui/core/themes/colors.dart';
 import 'package:drivesense/utils/sound_service.dart';
 import 'package:drivesense/utils/audio_recording_service.dart';
 import 'package:drivesense/utils/cloud_storage_service.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:io';

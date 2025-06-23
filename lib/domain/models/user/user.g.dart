@@ -13,6 +13,11 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   email: json['email'] as String,
   dateOfBirth: json['dateOfBirth'] as String,
   country: json['country'] as String,
+  emergencyContactUserIds:
+      (json['emergencyContactUserIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
@@ -22,4 +27,5 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'email': instance.email,
   'dateOfBirth': instance.dateOfBirth,
   'country': instance.country,
+  'emergencyContactUserIds': instance.emergencyContactUserIds,
 };
