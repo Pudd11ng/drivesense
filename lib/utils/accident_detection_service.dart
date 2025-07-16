@@ -37,9 +37,9 @@ class AccidentDetectionService {
   bool get isConfirmingImpact => _isConfirmingImpact;
 
   // Detection thresholds (in G's, where 1G = 9.8 m/s²)
-  double _minorThreshold = 2.0; // ~5G force (moderate braking)
-  double _moderateThreshold = 5.0; // ~30G force (hard collision)
-  double _severeThreshold = 6.0; // 50G force (severe impact)
+  double _minorThreshold = 3.0; // ~5G force (moderate braking)
+  double _moderateThreshold = 7.0; // ~30G force (hard collision)
+  double _severeThreshold = 50.0; // 50G force (severe impact)
 
   // Time window for peak detection (in milliseconds)
   final int _peakDetectionWindow = 200;

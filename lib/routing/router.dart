@@ -36,29 +36,43 @@ final GoRouter router = GoRouter(
   initialLocation: Routes.home,
   observers: [GoRouterObserver()],
 
-  // redirect: (BuildContext context, GoRouterState state) async {
-  //   final isAuth = await _authService.isAuthenticated();
+  redirect: (BuildContext context, GoRouterState state) async {
+    final isAuth = await _authService.isAuthenticated();
 
-  //   // Define patterns for public routes (replace parameters with wildcards)
-  //   final publicPatterns = [
-  //     RegExp(r'^/login$'),
-  //     RegExp(r'^/register$'),
-  //     RegExp(r'^/forgot_password$'),
-  //     RegExp(r'^/reset_password/[^/]+$'),
-  //   ];
+    // Define patterns for public routes (replace parameters with wildcards)
+    final publicPatterns = [
+      RegExp(r'^/login$'),
+      RegExp(r'^/register$'),
+      RegExp(r'^/forgot_password$'),
+      RegExp(r'^/reset-password$'),
+      RegExp(r'^/emergency-invite$'),
+    ];
 
-  //   final isPublicRoute = publicPatterns.any((pattern) => pattern.hasMatch(state.path ?? ''));
+    // Define patterns for public routes (replace parameters with wildcards)
+    final homePatterns = [
+      RegExp(r'^/login$'),
+      RegExp(r'^/register$'),
+      RegExp(r'^/$'),
+    ];
 
-  //   debugPrint('Path: ${state.path}, isAuth: $isAuth, isPublic: $isPublicRoute');
+    final currentPath = state.uri.path;
 
-  //   if (!isAuth && !isPublicRoute) {
-  //     return Routes.login;
-  //   } else if (isAuth && isPublicRoute) {
-  //     return Routes.home;
-  //   }
+    final isPublicRoute = publicPatterns.any(
+      (pattern) => pattern.hasMatch(currentPath),
+    );
 
-  //   return null;
-  // },
+    final isHomeRoute = homePatterns.any(
+      (pattern) => pattern.hasMatch(currentPath),
+    );
+
+    debugPrint('Path: $currentPath, isAuth: $isAuth, isPublic: $isPublicRoute');
+
+    if (!isAuth && !isPublicRoute) {
+      return Routes.login;
+    } 
+
+    return null;
+  },
   routes: [
     GoRoute(path: Routes.login, builder: (context, state) => LoginView()),
     GoRoute(path: Routes.register, builder: (context, state) => RegisterView()),

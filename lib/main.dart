@@ -12,14 +12,17 @@ import 'package:drivesense/ui/driving_history_analysis/view_model/analysis_view_
 import 'package:firebase_core/firebase_core.dart';
 import 'package:drivesense/utils/fcm_service.dart';
 import 'package:drivesense/firebase_options.dart';
+import 'package:drivesense/utils/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase first
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await dotenv.load(fileName: ".env");
+
+  final AuthService authService = AuthService();
+  await authService.getToken();
 
   final userViewModel = UserManagementViewModel();
   await userViewModel.checkAuthStatus();
@@ -27,8 +30,7 @@ void main() async {
   final fcmService = FcmService();
 
   fcmService.onTokenChanged = (token) async {
-    // Use the cached token instead of the getter
-    if (userViewModel.isAuthenticated) {
+    if (await userViewModel.isAuthenticatedAsync()) {
       await userViewModel.updateFcmToken(token);
     }
   };

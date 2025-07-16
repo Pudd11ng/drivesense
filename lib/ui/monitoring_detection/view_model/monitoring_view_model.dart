@@ -803,7 +803,7 @@ class MonitoringViewModel extends ChangeNotifier {
       switch (alert.alertTypeName) {
         case 'Alarm':
           // For alarm, always use the same MP3
-          audioPath = 'assets/audio/audio.mp3';
+          audioPath = 'assets/audio/audio1.mp3';
           break;
 
         case 'Audio':
@@ -839,7 +839,7 @@ class MonitoringViewModel extends ChangeNotifier {
 
         default:
           // Unknown alert type, use fallback
-          audioPath = 'assets/audio/audio.mp3';
+          audioPath = 'assets/audio/audio1.mp3';
       }
 
       // Show alert dialog

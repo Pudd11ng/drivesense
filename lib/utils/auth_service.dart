@@ -2,20 +2,24 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   String? _authToken;
   DateTime? _tokenExpiry;
   final _storage = const FlutterSecureStorage();
-  String? _cachedToken;
 
   /// Gets the authentication token, loading from secure storage if needed
   /// Returns null if token is expired
   Future<String?> getToken() async {
-    if (_cachedToken != null) {
-      return _cachedToken;
+    debugPrint('Getting authentication token');
+    if (_authToken == null) {
+      // If token is not in memory, try to load from storage
+      await _loadTokenFromStorage();
+      debugPrint('Loaded token from storage: $_authToken');
     }
-
-    // If token is not in memory, try to load from storage
-    await _loadTokenFromStorage();
+    debugPrint('Current token: $_authToken');
 
     // Check if token is expired
     if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
@@ -31,22 +35,22 @@ class AuthService {
   Future<void> setToken(String token, {int expiresInSeconds = 604800}) async {
     _authToken = token;
     _tokenExpiry = DateTime.now().add(Duration(seconds: expiresInSeconds));
-    _cachedToken = token;
 
     await _storage.write(key: 'auth_token', value: token);
     await _storage.write(
       key: 'token_expiry',
       value: _tokenExpiry!.toIso8601String(),
     );
+    debugPrint('Token saved: $token');
   }
 
   /// Clears the authentication token
   Future<void> clearToken() async {
     _authToken = null;
     _tokenExpiry = null;
-    _cachedToken = null;
     await _storage.delete(key: 'auth_token');
     await _storage.delete(key: 'token_expiry');
+    debugPrint('Authentication token cleared');
   }
 
   /// Load token and expiry from secure storage
@@ -72,6 +76,6 @@ class AuthService {
 
   // Synchronous method to check auth status
   bool isAuthenticatedSync() {
-    return _cachedToken != null;
+    return _authToken != null;
   }
 }

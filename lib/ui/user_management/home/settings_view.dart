@@ -187,12 +187,12 @@ class SettingsView extends StatelessWidget {
                 ),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final viewModel = Provider.of<UserManagementViewModel>(
                     context,
                     listen: false,
                   );
-                  viewModel.logout();
+                  await viewModel.logout(); // Await logout to ensure token is cleared
                   Navigator.of(context).pop();
                   context.go('/login');
                 },

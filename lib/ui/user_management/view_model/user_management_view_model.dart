@@ -9,6 +9,7 @@ import 'package:drivesense/utils/auth_service.dart';
 import 'package:drivesense/domain/models/notification/notification.dart';
 import 'package:provider/provider.dart';
 import 'package:drivesense/utils/fcm_service.dart';
+import 'package:flutter/scheduler.dart';
 
 // This view model handles user authentication and management
 // It includes methods for logging in, registering, and updating user profiles
@@ -33,11 +34,6 @@ class UserManagementViewModel extends ChangeNotifier {
   );
 
   final AuthService _authService = AuthService();
-
-  String? _cachedToken;
-
-  bool get isAuthenticated => _cachedToken != null;
-  bool get hasValidAuth => _cachedToken != null;
 
   User get user => _user;
   List<User> get emergencyContacts => _emergencyContacts;
@@ -550,7 +546,6 @@ class UserManagementViewModel extends ChangeNotifier {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        
       );
 
       if (response.statusCode == 200) {
@@ -758,34 +753,54 @@ class UserManagementViewModel extends ChangeNotifier {
   // Update checkAuthStatus to also fetch notification count
   Future<void> checkAuthStatus() async {
     try {
-      _cachedToken = await _authService.getToken();
-      
-      if (_cachedToken != null) {
-        try {
-          await loadUserProfile();
-          await fetchUnreadNotificationCount();
-          
-          // Update FCM token if available
-          final fcmService = Provider.of<FcmService>(
-            rootNavigatorKey.currentContext!, 
-            listen: false
-          );
-          if (fcmService.fcmToken != null) {
-            await updateFcmToken(fcmService.fcmToken!);
-          }
-        } catch (e) {
-          debugPrint('Error loading user profile: $e');
-          await logout();
-        }
+      final isAuthenticated = await _authService.isAuthenticated();
+
+      if (isAuthenticated) {
+        // Execute all tasks concurrently for better performance
+        await Future.wait([
+          _safeExecute(() => loadUserProfile(), 'loading user profile'),
+          _safeExecute(
+            () => fetchUnreadNotificationCount(),
+            'fetching notification count',
+          ),
+          _updateFcmTokenSafely(),
+        ]);
+      } else {
+        await _safeExecute(() => logout(), 'logout');
       }
-      
-      notifyListeners();
     } catch (e) {
       debugPrint('Error checking auth status: $e');
-      _cachedToken = null;
+    } finally {
       notifyListeners();
     }
   }
+
+  Future<void> _safeExecute(
+    Future<void> Function() operation,
+    String operationName,
+  ) async {
+    try {
+      await operation();
+    } catch (e) {
+      debugPrint('Error $operationName: $e');
+    }
+  }
+
+  Future<void> _updateFcmTokenSafely() async {
+    try {
+      final context = rootNavigatorKey.currentContext;
+      if (context == null) return;
+
+      final fcmService = Provider.of<FcmService>(context, listen: false);
+      if (fcmService.fcmToken != null) {
+        await updateFcmToken(fcmService.fcmToken!);
+      }
+    } catch (e) {
+      debugPrint('Error updating FCM token: $e');
+    }
+  }
+
+  Future<bool> isAuthenticated() async => await _authService.isAuthenticated();
 
   Future<void> loadUserProfile() async {
     final token = await _authService.getToken();
@@ -848,6 +863,7 @@ class UserManagementViewModel extends ChangeNotifier {
 
     try {
       final token = await _authService.getToken();
+      debugPrint('Bearer token: $token');
       final response = await http.post(
         Uri.parse(
           '${dotenv.env['BACKEND_URL']}/api/users/emergency-contacts/accept',
@@ -861,8 +877,9 @@ class UserManagementViewModel extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         _isLoading = false;
-        // Todo: maybe need notify the other user
-        notifyListeners();
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          notifyListeners();
+        });
         return true;
       } else {
         final errorData = json.decode(response.body);
@@ -991,6 +1008,10 @@ class UserManagementViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> isAuthenticatedAsync() async {
+    return await _authService.isAuthenticated();
   }
 }
 
